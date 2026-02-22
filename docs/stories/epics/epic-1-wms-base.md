@@ -551,9 +551,9 @@ quality_gate_tools: [mobile_ux_review, inventory_accuracy_test, sync_conflict_re
 | Wave 1 | 1.4 Observabilidade (Prometheus+ELK+Jaeger+Istio) | @devops | @architect | M | ✅ Done |
 | Wave 2 | 2.1 Cadastro Armazéns & Estrutura Física | @dev | @architect | M | ✅ Done |
 | Wave 2 | 2.2 Cadastro Produtos WMS (SKU+GS1) | @dev | @architect | S | ✅ Done |
-| Wave 3 | 3.1 Recebimento de Mercadorias (Inbound+SCM) | @dev | @architect | L | ⬜ Próxima |
-| Wave 3 | 3.2 Putaway (Motor de Regras) | @dev | @architect | L | ⬜ Aguardando 3.1 |
-| Wave 3 | 3.3 Controle de Qualidade & Quarentena | @dev | @architect | M | ⬜ Aguardando 3.1 |
+| Wave 3 | 3.1 Recebimento de Mercadorias (Inbound+SCM) | @dev | @architect | L | ✅ Done |
+| Wave 3 | 3.2 Putaway (Motor de Regras) | @dev | @architect | L | ✅ Done |
+| Wave 3 | 3.3 Controle de Qualidade & Quarentena | @dev | @architect | M | ✅ Done |
 | Wave 4 | 4.1 Controle de Estoque em Tempo Real | @dev | @architect | L |
 | Wave 4 | 4.2 Rastreabilidade Lote/Série/Validade/GS1 | @dev | @architect | L |
 | Wave 4 | 4.3 Inventário Físico | @dev | @architect | M |
@@ -602,12 +602,12 @@ validationScore: "8.3/10"
 version: 1.1.0
 createdBy: "@pm (Morgan)"
 createdAt: "2026-02-21"
-lastUpdatedBy: "@aios-master (Orion)"
+lastUpdatedBy: "@po (Pax)"
 lastUpdatedAt: "2026-02-22"
-wavesCompleted: [1, 2]
+wavesCompleted: [1, 2, 3]
 wavesInProgress: []
-wavesNext: [3]
-storiesCompleted: 6
+wavesNext: [4]
+storiesCompleted: 9
 storiesTotal: 23
 totalStories: 23
 totalWaves: 8
