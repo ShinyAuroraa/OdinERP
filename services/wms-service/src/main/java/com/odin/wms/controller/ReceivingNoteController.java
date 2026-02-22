@@ -5,8 +5,10 @@ import com.odin.wms.domain.enums.ReceivingStatus;
 import com.odin.wms.dto.request.ConfirmReceivingItemRequest;
 import com.odin.wms.dto.request.CreateReceivingNoteRequest;
 import com.odin.wms.dto.response.PutawayTaskResponse;
+import com.odin.wms.dto.response.QuarantineTaskResponse;
 import com.odin.wms.dto.response.ReceivingNoteResponse;
 import com.odin.wms.service.PutawayService;
+import com.odin.wms.service.QuarantineService;
 import com.odin.wms.service.ReceivingNoteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class ReceivingNoteController {
 
     private final ReceivingNoteService receivingNoteService;
     private final PutawayService putawayService;
+    private final QuarantineService quarantineService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -77,5 +80,12 @@ public class ReceivingNoteController {
     @PreAuthorize("hasAnyRole('WMS_OPERATOR', 'WMS_SUPERVISOR', 'WMS_ADMIN')")
     public List<PutawayTaskResponse> generatePutawayTasks(@PathVariable UUID id) {
         return putawayService.generateTasks(id, TenantContextHolder.getTenantId());
+    }
+
+    @PostMapping("/{id}/quarantine-tasks")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('WMS_OPERATOR', 'WMS_SUPERVISOR', 'WMS_ADMIN')")
+    public List<QuarantineTaskResponse> generateQuarantineTasks(@PathVariable UUID id) {
+        return quarantineService.generateTasks(id, TenantContextHolder.getTenantId());
     }
 }
