@@ -9,9 +9,11 @@ import com.odin.wms.dto.response.QuarantineTaskSummaryResponse;
 import com.odin.wms.exception.BusinessException;
 import com.odin.wms.exception.ConflictException;
 import com.odin.wms.exception.ResourceNotFoundException;
+import com.odin.wms.infrastructure.elasticsearch.TraceabilityIndexer;
 import com.odin.wms.messaging.QuarantineEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -39,6 +41,7 @@ public class QuarantineService {
     private final StockMovementRepository stockMovementRepository;
     private final AuditLogRepository auditLogRepository;
     private final QuarantineEventPublisher eventPublisher;
+    private final TraceabilityIndexer traceabilityIndexer;
 
     /**
      * Gera tarefas de quarentena para todos os itens FLAGGED de uma nota COMPLETED_WITH_DIVERGENCE.
@@ -108,7 +111,7 @@ public class QuarantineService {
             // Registrar movimentação de entrada na quarentena (apenas se qty > 0; constraint db proíbe qty=0)
             int quarantineInQty = stockItem.getQuantityAvailable();
             if (quarantineInQty > 0) {
-                stockMovementRepository.save(StockMovement.builder()
+                StockMovement quarantineInMovement = stockMovementRepository.save(StockMovement.builder()
                         .tenantId(tenantId)
                         .type(MovementType.QUARANTINE_IN)
                         .product(stockItem.getProduct())
@@ -120,6 +123,7 @@ public class QuarantineService {
                         .referenceId(task.getId())
                         .operatorId(actorId)
                         .build());
+                traceabilityIndexer.indexMovementAsync(quarantineInMovement);
             }
 
             tasks.add(task);
@@ -154,7 +158,9 @@ public class QuarantineService {
      * Decide o destino do item em quarentena: RELEASE_TO_STOCK, RETURN_TO_SUPPLIER ou SCRAP.
      * Task deve estar IN_REVIEW → 409 caso contrário.
      * Requer role WMS_SUPERVISOR ou WMS_ADMIN.
+     * Evicta cache de saldo de estoque (Story 4.1 — AC6).
      */
+    @CacheEvict(cacheNames = "stockBalance", allEntries = true)
     public QuarantineTaskResponse decide(UUID taskId, DecideQuarantineRequest request, UUID tenantId) {
         QuarantineTask task = getByTenant(taskId, tenantId);
         if (task.getStatus() != QuarantineStatus.IN_REVIEW) {
@@ -197,7 +203,9 @@ public class QuarantineService {
      * Cancela tarefa: PENDING ou IN_REVIEW → CANCELLED.
      * StockItem permanece na quarantineLocation; nenhum movimento adicional.
      * Requer role WMS_SUPERVISOR ou WMS_ADMIN.
+     * Evicta cache de saldo de estoque (Story 4.1 — AC6).
      */
+    @CacheEvict(cacheNames = "stockBalance", allEntries = true)
     public void cancel(UUID taskId, UUID tenantId) {
         QuarantineTask task = getByTenant(taskId, tenantId);
         if (task.getStatus() == QuarantineStatus.APPROVED
@@ -265,7 +273,7 @@ public class QuarantineService {
         // Registrar PUTAWAY apenas se qty > 0 (constraint db proíbe quantity=0)
         int putawayQty = stockItem.getQuantityAvailable();
         if (putawayQty > 0) {
-            stockMovementRepository.save(StockMovement.builder()
+            StockMovement releaseMovement = stockMovementRepository.save(StockMovement.builder()
                     .tenantId(tenantId)
                     .type(MovementType.PUTAWAY)
                     .product(stockItem.getProduct())
@@ -277,6 +285,7 @@ public class QuarantineService {
                     .referenceId(task.getId())
                     .operatorId(supervisorId)
                     .build());
+            traceabilityIndexer.indexMovementAsync(releaseMovement);
         }
     }
 
@@ -290,7 +299,7 @@ public class QuarantineService {
         // Registrar QUARANTINE_OUT apenas se qty > 0 (constraint db proíbe quantity=0)
         int returnQty = stockItem.getQuantityAvailable();
         if (returnQty > 0) {
-            stockMovementRepository.save(StockMovement.builder()
+            StockMovement returnMovement = stockMovementRepository.save(StockMovement.builder()
                     .tenantId(tenantId)
                     .type(MovementType.QUARANTINE_OUT)
                     .product(stockItem.getProduct())
@@ -301,6 +310,7 @@ public class QuarantineService {
                     .referenceId(task.getId())
                     .operatorId(supervisorId)
                     .build());
+            traceabilityIndexer.indexMovementAsync(returnMovement);
         }
 
         eventPublisher.publishReturnToSupplier(task);
@@ -315,7 +325,7 @@ public class QuarantineService {
 
         // Registrar QUARANTINE_OUT com qty negativo apenas se qty > 0 (constraint db proíbe quantity=0)
         if (qty > 0) {
-            stockMovementRepository.save(StockMovement.builder()
+            StockMovement scrapMovement = stockMovementRepository.save(StockMovement.builder()
                     .tenantId(tenantId)
                     .type(MovementType.QUARANTINE_OUT)
                     .product(stockItem.getProduct())
@@ -326,6 +336,7 @@ public class QuarantineService {
                     .referenceId(task.getId())
                     .operatorId(supervisorId)
                     .build());
+            traceabilityIndexer.indexMovementAsync(scrapMovement);
         }
 
         stockItem.setQuantityAvailable(0);

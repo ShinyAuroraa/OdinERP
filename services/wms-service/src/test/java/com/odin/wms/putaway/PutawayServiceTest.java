@@ -9,6 +9,7 @@ import com.odin.wms.dto.response.PutawayTaskResponse;
 import com.odin.wms.exception.BusinessException;
 import com.odin.wms.exception.ConflictException;
 import com.odin.wms.exception.ResourceNotFoundException;
+import com.odin.wms.infrastructure.elasticsearch.TraceabilityIndexer;
 import com.odin.wms.service.PutawayService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,7 @@ class PutawayServiceTest {
     @Mock private StockItemRepository stockItemRepository;
     @Mock private StockMovementRepository stockMovementRepository;
     @Mock private AuditLogRepository auditLogRepository;
+    @Mock private TraceabilityIndexer traceabilityIndexer;
 
     @InjectMocks
     private PutawayService putawayService;
