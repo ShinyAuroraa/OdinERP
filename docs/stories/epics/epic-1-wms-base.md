@@ -545,12 +545,12 @@ quality_gate_tools: [mobile_ux_review, inventory_accuracy_test, sync_conflict_re
 
 | Wave | Story | Executor | Quality Gate | Complexidade |
 |------|-------|----------|--------------|-------------|
-| Wave 1 | 1.1 WMS Service Bootstrap | @devops | @architect | M |
-| Wave 1 | 1.2 Schema & Domain Model | @data-engineer | @dev | L |
-| Wave 1 | 1.3 Autenticação & RBAC Keycloak | @dev | @architect | M |
-| Wave 1 | 1.4 Observabilidade (Prometheus+ELK+Jaeger+Istio) | @devops | @architect | M |
-| Wave 2 | 2.1 Cadastro Armazéns & Estrutura Física | @dev | @architect | M |
-| Wave 2 | 2.2 Cadastro Produtos WMS (SKU+GS1) | @dev | @architect | S |
+| Wave 1 | 1.1 WMS Service Bootstrap | @devops | @architect | M | ✅ Done |
+| Wave 1 | 1.2 Schema & Domain Model | @data-engineer | @dev | L | ✅ Done |
+| Wave 1 | 1.3 Autenticação & RBAC Keycloak | @dev | @architect | M | ✅ Done |
+| Wave 1 | 1.4 Observabilidade (Prometheus+ELK+Jaeger+Istio) | @devops | @architect | M | ✅ Done |
+| Wave 2 | 2.1 Cadastro Armazéns & Estrutura Física | @dev | @architect | M | ✅ Done |
+| Wave 2 | 2.2 Cadastro Produtos WMS (SKU+GS1) | @dev | @architect | S | ⬜ Próxima |
 | Wave 3 | 3.1 Recebimento de Mercadorias (Inbound+SCM) | @dev | @architect | L |
 | Wave 3 | 3.2 Putaway (Motor de Regras) | @dev | @architect | L |
 | Wave 3 | 3.3 Controle de Qualidade & Quarentena | @dev | @architect | M |
