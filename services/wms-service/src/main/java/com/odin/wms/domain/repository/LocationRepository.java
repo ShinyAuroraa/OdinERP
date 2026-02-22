@@ -17,4 +17,6 @@ public interface LocationRepository extends JpaRepository<Location, UUID> {
     List<Location> findByTenantIdAndType(UUID tenantId, LocationType type);
 
     boolean existsByTenantIdAndCode(UUID tenantId, String code);
+
+    List<Location> findByTenantIdAndShelfId(UUID tenantId, UUID shelfId);
 }
