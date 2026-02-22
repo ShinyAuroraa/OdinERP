@@ -52,6 +52,22 @@ spring:
         jwt:
           jwk-set-uri: ${KEYCLOAK_JWK_URI:http://localhost:8090/realms/odin/protocol/openid-connect/certs}
 
+  # Kafka
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: wms-receiving
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.odin.wms.infrastructure.kafka.event"
+        spring.json.use.type.headers: "false"
+        spring.json.value.default.type: "com.odin.wms.infrastructure.kafka.event.PurchaseOrderConfirmedEvent"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
   # Graceful shutdown
   lifecycle:
     timeout-per-shutdown-phase: 30s

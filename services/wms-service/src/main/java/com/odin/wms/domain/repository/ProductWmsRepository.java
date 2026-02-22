@@ -20,6 +20,8 @@ public interface ProductWmsRepository extends JpaRepository<ProductWms, UUID> {
 
     boolean existsByTenantIdAndEan13(UUID tenantId, String ean13);
 
+    Optional<ProductWms> findByIdAndTenantId(UUID id, UUID tenantId);
+
     List<ProductWms> findByTenantId(UUID tenantId);
 
     List<ProductWms> findByTenantIdAndStorageType(UUID tenantId, StorageType storageType);

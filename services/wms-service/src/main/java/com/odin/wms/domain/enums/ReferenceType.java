@@ -6,5 +6,6 @@ public enum ReferenceType {
     PRODUCTION_ORDER,
     TRANSFER_ORDER,
     MANUAL,
-    INVENTORY_COUNT
+    INVENTORY_COUNT,
+    RECEIVING_NOTE
 }

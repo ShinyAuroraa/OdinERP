@@ -1,4 +1,16 @@
 spring:
+  # Kafka — listener desabilitado por padrão nos testes; apenas ReceivingNoteKafkaConsumerTest
+  # usa @EmbeddedKafka e habilita explicitamente com spring.kafka.listener.auto-startup=true
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers:localhost:9092}
+    listener:
+      auto-startup: false
+    consumer:
+      properties:
+        spring.json.trusted.packages: "com.odin.wms.infrastructure.kafka.event"
+        spring.json.use.type.headers: "false"
+        spring.json.value.default.type: "com.odin.wms.infrastructure.kafka.event.PurchaseOrderConfirmedEvent"
+
   # OAuth2 Resource Server — URI nunca é chamada em testes (jwt() post-processor bypassa o JwtDecoder)
   security:
     oauth2:
