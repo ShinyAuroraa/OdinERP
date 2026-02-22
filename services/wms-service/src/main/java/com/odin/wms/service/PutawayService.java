@@ -11,6 +11,7 @@ import com.odin.wms.exception.ConflictException;
 import com.odin.wms.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -123,6 +124,7 @@ public class PutawayService {
      * Se {@code request.confirmedLocationId} for null, usa a localização sugerida.
      * Cria StockMovement(PUTAWAY) e AuditLog(MOVEMENT). Atualiza StockItem.location.
      */
+    @CacheEvict(cacheNames = "stockBalance", allEntries = true)
     public PutawayTaskResponse confirm(UUID taskId, ConfirmPutawayRequest request, UUID tenantId) {
         PutawayTask task = getByTenant(taskId, tenantId);
         if (task.getStatus() != PutawayStatus.IN_PROGRESS) {

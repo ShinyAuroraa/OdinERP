@@ -88,4 +88,64 @@ public interface StockItemRepository extends JpaRepository<StockItem, UUID> {
      * Usado em PutawayService.confirm() para validar capacidade antes de confirmar.
      */
     long countByTenantIdAndLocationId(UUID tenantId, UUID locationId);
+
+    // -------------------------------------------------------------------------
+    // Story 4.1 — Controle de Estoque em Tempo Real
+    // -------------------------------------------------------------------------
+
+    /**
+     * Filtro flexível para GET /stock/balance.
+     * Parâmetros opcionais: null = sem filtro para aquela dimensão.
+     * Faz JOIN FETCH de product, location e lot para evitar N+1.
+     */
+    @Query("""
+            SELECT DISTINCT s FROM StockItem s
+            JOIN FETCH s.product p
+            JOIN FETCH s.location l
+            LEFT JOIN FETCH s.lot lot
+            WHERE s.tenantId = :tenantId
+            AND (:productId IS NULL OR p.id = :productId)
+            AND (:locationId IS NULL OR l.id = :locationId)
+            AND (:lotId IS NULL OR (lot IS NOT NULL AND lot.id = :lotId))
+            AND (:warehouseId IS NULL OR l.shelf.aisle.zone.warehouse.id = :warehouseId)
+            """)
+    List<StockItem> findByFilters(@Param("tenantId") UUID tenantId,
+                                  @Param("productId") UUID productId,
+                                  @Param("locationId") UUID locationId,
+                                  @Param("lotId") UUID lotId,
+                                  @Param("warehouseId") UUID warehouseId);
+
+    /**
+     * Count de localizações ocupadas por zona (quantidade > 0 em qualquer status).
+     * Retorna List<Object[]> onde [0]=zoneId (UUID), [1]=count (Long).
+     * Usado em StockBalanceService.getOccupation().
+     */
+    @Query("""
+            SELECT s.location.shelf.aisle.zone.id, COUNT(DISTINCT s.location.id)
+            FROM StockItem s
+            WHERE s.tenantId = :tenantId
+            AND s.location.shelf.aisle.zone.warehouse.id = :warehouseId
+            AND (s.quantityAvailable > 0 OR s.quantityReserved > 0
+                 OR s.quantityQuarantine > 0 OR s.quantityDamaged > 0)
+            GROUP BY s.location.shelf.aisle.zone.id
+            """)
+    List<Object[]> countOccupiedLocationsByZone(@Param("tenantId") UUID tenantId,
+                                                @Param("warehouseId") UUID warehouseId);
+
+    /**
+     * Soma total de unidades em estoque por zona (available + reserved + quarantine + damaged).
+     * Retorna List<Object[]> onde [0]=zoneId (UUID), [1]=sum (Long).
+     * Usado para calcular usedCapacityUnits em StockBalanceService.getOccupation().
+     */
+    @Query("""
+            SELECT s.location.shelf.aisle.zone.id,
+                   COALESCE(SUM(s.quantityAvailable + s.quantityReserved
+                                + s.quantityQuarantine + s.quantityDamaged), 0)
+            FROM StockItem s
+            WHERE s.tenantId = :tenantId
+            AND s.location.shelf.aisle.zone.warehouse.id = :warehouseId
+            GROUP BY s.location.shelf.aisle.zone.id
+            """)
+    List<Object[]> sumQuantitiesByZone(@Param("tenantId") UUID tenantId,
+                                       @Param("warehouseId") UUID warehouseId);
 }

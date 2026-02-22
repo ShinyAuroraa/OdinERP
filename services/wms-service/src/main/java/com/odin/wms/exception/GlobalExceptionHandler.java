@@ -42,7 +42,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleOptimisticLocking(org.springframework.orm.ObjectOptimisticLockingFailureException ex) {
         log.warn("Optimistic locking conflict: {}", ex.getMessage());
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
-            "Item was modified concurrently. Please retry.");
+            "Conflito de concorrência — tente novamente.");
         problem.setType(URI.create("https://odin.com/errors/conflict"));
         return problem;
     }

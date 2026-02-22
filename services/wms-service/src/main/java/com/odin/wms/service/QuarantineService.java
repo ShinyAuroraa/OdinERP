@@ -12,6 +12,7 @@ import com.odin.wms.exception.ResourceNotFoundException;
 import com.odin.wms.messaging.QuarantineEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -154,7 +155,9 @@ public class QuarantineService {
      * Decide o destino do item em quarentena: RELEASE_TO_STOCK, RETURN_TO_SUPPLIER ou SCRAP.
      * Task deve estar IN_REVIEW → 409 caso contrário.
      * Requer role WMS_SUPERVISOR ou WMS_ADMIN.
+     * Evicta cache de saldo de estoque (Story 4.1 — AC6).
      */
+    @CacheEvict(cacheNames = "stockBalance", allEntries = true)
     public QuarantineTaskResponse decide(UUID taskId, DecideQuarantineRequest request, UUID tenantId) {
         QuarantineTask task = getByTenant(taskId, tenantId);
         if (task.getStatus() != QuarantineStatus.IN_REVIEW) {
@@ -197,7 +200,9 @@ public class QuarantineService {
      * Cancela tarefa: PENDING ou IN_REVIEW → CANCELLED.
      * StockItem permanece na quarantineLocation; nenhum movimento adicional.
      * Requer role WMS_SUPERVISOR ou WMS_ADMIN.
+     * Evicta cache de saldo de estoque (Story 4.1 — AC6).
      */
+    @CacheEvict(cacheNames = "stockBalance", allEntries = true)
     public void cancel(UUID taskId, UUID tenantId) {
         QuarantineTask task = getByTenant(taskId, tenantId);
         if (task.getStatus() == QuarantineStatus.APPROVED
