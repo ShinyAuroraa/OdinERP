@@ -1,0 +1,23 @@
+# Gradle build output
+build/
+.gradle/
+**/build/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Docs & config (not needed in image)
+docs/
+*.md
+.env
+.env.*
+
+# AIOS framework (project management, not source code)
+.aios-core/
+.claude/

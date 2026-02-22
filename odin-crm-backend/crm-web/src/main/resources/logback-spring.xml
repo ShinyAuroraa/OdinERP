@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Reads spring.application.name from the Spring Environment -->
+    <springProperty scope="context" name="service" source="spring.application.name" defaultValue="odin-crm-backend"/>
+
+    <!-- ──────────────────────────────────────────────────────────────────────
+         JSON appender — used in non-local profiles (staging / prod)
+         logstash-logback-encoder includes all MDC fields automatically:
+         traceId, spanId (Micrometer Tracing), userId (set by application)
+    ────────────────────────────────────────────────────────────────────────── -->
+    <appender name="JSON_STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <version>[ignore]</version>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+            <!-- Embed service name in every log line -->
+            <customFields>{"service":"${service}"}</customFields>
+            <!-- MDC fields (traceId, spanId, userId) included automatically -->
+            <includeMdc>true</includeMdc>
+        </encoder>
+    </appender>
+
+    <!-- ──────────────────────────────────────────────────────────────────────
+         Human-readable appender — local & test profiles
+         Pattern: timestamp [traceId,spanId] LEVEL [userId] logger — message
+    ────────────────────────────────────────────────────────────────────────── -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{ISO8601} [%X{traceId:--},%X{spanId:--}] %-5level [%X{userId:--}] %logger{36} — %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- ──────────────────────────────────────────────────────────────────────
+         Profile: local, test — human-readable, DEBUG for application code
+    ────────────────────────────────────────────────────────────────────────── -->
+    <springProfile name="local,test">
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+        </root>
+        <logger name="br.com.odin" level="DEBUG" additivity="false">
+            <appender-ref ref="STDOUT"/>
+        </logger>
+    </springProfile>
+
+    <!-- ──────────────────────────────────────────────────────────────────────
+         Profile: default (staging, prod) — JSON, INFO for app, WARN for noise
+    ────────────────────────────────────────────────────────────────────────── -->
+    <springProfile name="!(local|test)">
+        <root level="INFO">
+            <appender-ref ref="JSON_STDOUT"/>
+        </root>
+        <logger name="br.com.odin" level="INFO" additivity="false">
+            <appender-ref ref="JSON_STDOUT"/>
+        </logger>
+        <!-- Reduce framework noise in production -->
+        <logger name="org.springframework"          level="WARN"/>
+        <logger name="org.hibernate"                level="WARN"/>
+        <logger name="io.grpc"                      level="WARN"/>
+        <logger name="org.apache.kafka"             level="WARN"/>
+        <logger name="io.lettuce"                   level="WARN"/>
+    </springProfile>
+
+</configuration>

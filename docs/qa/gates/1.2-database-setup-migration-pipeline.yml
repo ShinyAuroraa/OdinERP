@@ -1,0 +1,40 @@
+schema: 1
+story: '1.2'
+gate: CONCERNS
+status_reason: >
+  All 10 acceptance criteria are functionally met and ./gradlew test returns BUILD SUCCESSFUL.
+  One low-severity deviation from AC3 (migration file location) is documented and justified.
+reviewer: 'Quinn'
+updated: '2026-02-22T00:00:00Z'
+top_issues:
+  - id: 'REQ-001'
+    severity: low
+    finding: >
+      AC3 specifies migration V1__create_schema.sql in crm-web/src/main/resources/db/migration/,
+      but the implementation places it in crm-infrastructure/src/main/resources/db/migration/.
+    suggested_action: >
+      Deviation is acceptable and well-justified: crm-infrastructure owns Flyway and persistence
+      adapters; the migration must be on the test classpath for @DataJpaTest; and at production
+      runtime crm-web includes crm-infrastructure resources via the dependency chain.
+      Update AC3 text in story spec to reflect the authoritative location for future reference.
+
+checks:
+  code_review: PASS
+  unit_tests: PASS
+  acceptance_criteria: CONCERNS  # AC3 location deviation (low severity, justified)
+  no_regressions: PASS
+  performance: PASS
+  security: PASS
+  documentation: PASS
+
+notes:
+  - 'All 4 SchemaIntegrationTest tests pass: pgcryptoExtensionIsInstalled, pgTrgmExtensionIsInstalled, setUpdatedAtFunctionExists, flywayAppliedV1Migration'
+  - 'Docker Desktop 29.x workaround (api.version=1.46 JVM system property) is correctly scoped to Gradle test task; no impact on production builds'
+  - 'Testcontainers container is declared static — shared across all subclass tests, correct usage pattern'
+  - 'TestApplication.java provides @SpringBootConfiguration anchor for @DataJpaTest in non-boot module — correct pattern'
+  - 'HikariCP pool (max 20, min 5) matches architecture.md specification'
+  - 'application.yml DB_USER has no default (correct for production); application-local.yml provides safe defaults for local dev'
+  - 'README updated with Docker Desktop TCP prerequisite and first-run image download note'
+
+waiver:
+  active: false

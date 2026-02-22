@@ -1,0 +1,42 @@
+# Test profile — real-looking config ready for Testcontainers (Story 1.2)
+# Current smoke test (CrmApplicationSmokeTest) uses @MockBean + autoconfiguration
+# exclusions to avoid requiring live infrastructure.
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/odin_crm_test
+    username: ${DB_USER:odin_crm_app}
+    password: ${DB_PASSWORD:test_password}
+    driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: odin-crm-test
+      auto-offset-reset: earliest
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/odin}
+  flyway:
+    enabled: false          # disabled — no real DB in smoke test
+  jpa:
+    hibernate:
+      ddl-auto: none        # no schema changes in test profile
+    show-sql: true
+
+# Override readiness group — exclude infra contributors not available in smoke test
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState   # only JVM readiness; db/redis/kafka not wired in test
+
+logging:
+  level:
+    br.com.odin: DEBUG
+    org.springframework.security: DEBUG
