@@ -5,5 +5,6 @@ public enum DivergenceType {
     SHORT,
     EXCESS,
     DAMAGED,
-    WRONG_PRODUCT
+    WRONG_PRODUCT,
+    QUALITY
 }

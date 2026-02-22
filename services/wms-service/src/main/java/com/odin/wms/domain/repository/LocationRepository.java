@@ -96,4 +96,24 @@ public interface LocationRepository extends JpaRepository<Location, UUID> {
             WHERE l.id = :locationId
             """)
     Optional<UUID> findWarehouseIdByLocationId(@Param("locationId") UUID locationId);
+
+    /**
+     * Lista localizações de quarentena (QUARANTINE) de um warehouse.
+     * Usado em QuarantineService.generateTasks() para encontrar a zona de quarentena.
+     * Ordenado por fullAddress para resultado determinístico.
+     */
+    @Query("""
+            SELECT l FROM Location l
+            JOIN l.shelf s
+            JOIN s.aisle a
+            JOIN a.zone z
+            WHERE l.tenantId = :tenantId
+              AND l.type = com.odin.wms.domain.enums.LocationType.QUARANTINE
+              AND l.active = true
+              AND z.warehouse.id = :warehouseId
+            ORDER BY l.fullAddress ASC
+            """)
+    List<Location> findQuarantineByWarehouse(
+            @Param("warehouseId") UUID warehouseId,
+            @Param("tenantId") UUID tenantId);
 }

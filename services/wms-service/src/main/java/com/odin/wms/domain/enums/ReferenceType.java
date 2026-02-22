@@ -8,5 +8,6 @@ public enum ReferenceType {
     MANUAL,
     INVENTORY_COUNT,
     RECEIVING_NOTE,
-    PUTAWAY_TASK
+    PUTAWAY_TASK,
+    QUARANTINE_TASK
 }
