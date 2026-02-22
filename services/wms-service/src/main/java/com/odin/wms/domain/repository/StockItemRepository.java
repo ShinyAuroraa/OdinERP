@@ -41,4 +41,51 @@ public interface StockItemRepository extends JpaRepository<StockItem, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM StockItem s WHERE s.id = :id")
     Optional<StockItem> findByIdWithLock(@Param("id") UUID id);
+
+    /**
+     * Retorna contagem de StockItems por localização para um tenant.
+     * Evita N+1 queries ao verificar capacidade de múltiplas localizações.
+     * Resultado: List<Object[]> onde [0]=locationId (UUID), [1]=count (Long).
+     */
+    @Query("""
+            SELECT s.location.id, COUNT(s) FROM StockItem s
+            WHERE s.tenantId = :tenantId
+            GROUP BY s.location.id
+            """)
+    List<Object[]> countByTenantIdGroupByLocationId(@Param("tenantId") UUID tenantId);
+
+    /**
+     * FEFO — retorna IDs de localizações que já contêm o produto,
+     * ordenados pelo menor expiryDate do lot (NULL por último).
+     * Preferir co-localização com lote mais próximo do vencimento.
+     */
+    @Query("""
+            SELECT s.location.id FROM StockItem s
+            WHERE s.tenantId = :tenantId
+              AND s.product.id = :productId
+            GROUP BY s.location.id
+            ORDER BY MIN(s.lot.expiryDate) ASC NULLS LAST
+            """)
+    List<UUID> findLocationIdsWithProductByExpiryFEFO(
+            @Param("tenantId") UUID tenantId,
+            @Param("productId") UUID productId);
+
+    /**
+     * FIFO — retorna IDs distintos de localizações que já contêm o produto.
+     * Preferir co-localização para agrupamento de SKU.
+     */
+    @Query("""
+            SELECT DISTINCT s.location.id FROM StockItem s
+            WHERE s.tenantId = :tenantId
+              AND s.product.id = :productId
+            """)
+    List<UUID> findLocationIdsWithProduct(
+            @Param("tenantId") UUID tenantId,
+            @Param("productId") UUID productId);
+
+    /**
+     * Contagem de itens em uma localização específica.
+     * Usado em PutawayService.confirm() para validar capacidade antes de confirmar.
+     */
+    long countByTenantIdAndLocationId(UUID tenantId, UUID locationId);
 }

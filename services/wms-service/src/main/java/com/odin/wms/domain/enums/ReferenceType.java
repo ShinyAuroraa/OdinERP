@@ -7,5 +7,6 @@ public enum ReferenceType {
     TRANSFER_ORDER,
     MANUAL,
     INVENTORY_COUNT,
-    RECEIVING_NOTE
+    RECEIVING_NOTE,
+    PUTAWAY_TASK
 }

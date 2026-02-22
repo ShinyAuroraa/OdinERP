@@ -4,7 +4,9 @@ import com.odin.wms.config.security.TenantContextHolder;
 import com.odin.wms.domain.enums.ReceivingStatus;
 import com.odin.wms.dto.request.ConfirmReceivingItemRequest;
 import com.odin.wms.dto.request.CreateReceivingNoteRequest;
+import com.odin.wms.dto.response.PutawayTaskResponse;
 import com.odin.wms.dto.response.ReceivingNoteResponse;
+import com.odin.wms.service.PutawayService;
 import com.odin.wms.service.ReceivingNoteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import java.util.UUID;
 public class ReceivingNoteController {
 
     private final ReceivingNoteService receivingNoteService;
+    private final PutawayService putawayService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -67,5 +70,12 @@ public class ReceivingNoteController {
     @PreAuthorize("hasAnyRole('WMS_SUPERVISOR', 'WMS_ADMIN')")
     public ReceivingNoteResponse approveDivergences(@PathVariable UUID id) {
         return receivingNoteService.approveDivergences(id, TenantContextHolder.getTenantId());
+    }
+
+    @PostMapping("/{id}/putaway-tasks")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('WMS_OPERATOR', 'WMS_SUPERVISOR', 'WMS_ADMIN')")
+    public List<PutawayTaskResponse> generatePutawayTasks(@PathVariable UUID id) {
+        return putawayService.generateTasks(id, TenantContextHolder.getTenantId());
     }
 }
