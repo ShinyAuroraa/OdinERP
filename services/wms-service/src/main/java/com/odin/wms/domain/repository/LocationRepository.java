@@ -59,4 +59,41 @@ public interface LocationRepository extends JpaRepository<Location, UUID> {
     List<Location> findReceivingDocksByWarehouse(
             @Param("warehouseId") UUID warehouseId,
             @Param("tenantId") UUID tenantId);
+
+    /**
+     * Lista localizações de armazenagem (STORAGE ou PICKING) de um warehouse.
+     * Usado pelo motor FIFO/FEFO em PutawayService.suggestLocation().
+     * Ordenado por fullAddress para resultado determinístico.
+     */
+    @Query("""
+            SELECT l FROM Location l
+            JOIN l.shelf s
+            JOIN s.aisle a
+            JOIN a.zone z
+            WHERE l.tenantId = :tenantId
+              AND l.type IN (
+                  com.odin.wms.domain.enums.LocationType.STORAGE,
+                  com.odin.wms.domain.enums.LocationType.PICKING
+              )
+              AND l.active = true
+              AND z.warehouse.id = :warehouseId
+            ORDER BY l.fullAddress ASC
+            """)
+    List<Location> findStorageOrPickingByWarehouse(
+            @Param("warehouseId") UUID warehouseId,
+            @Param("tenantId") UUID tenantId);
+
+    /**
+     * Retorna o ID do warehouse ao qual uma location pertence.
+     * Evita lazy-load da cadeia Location → Shelf → Aisle → Zone → Warehouse.
+     * Usado em PutawayService.confirm() para validação cross-warehouse.
+     */
+    @Query("""
+            SELECT z.warehouse.id FROM Location l
+            JOIN l.shelf s
+            JOIN s.aisle a
+            JOIN a.zone z
+            WHERE l.id = :locationId
+            """)
+    Optional<UUID> findWarehouseIdByLocationId(@Param("locationId") UUID locationId);
 }
