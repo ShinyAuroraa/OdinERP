@@ -1,0 +1,41 @@
+spring:
+  # OAuth2 Resource Server — URI nunca é chamada em testes (jwt() post-processor bypassa o JwtDecoder)
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:9999/realms/odin/protocol/openid-connect/certs
+
+  jpa:
+    show-sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
+
+# Management: random port to avoid conflicts; expose all endpoints for test assertions
+management:
+  server:
+    port: 0
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  # Spring Boot 3.x disables metrics export in tests by default; enable prometheus explicitly
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    root: WARN
+    com.odin.wms: INFO
+    org.testcontainers: INFO

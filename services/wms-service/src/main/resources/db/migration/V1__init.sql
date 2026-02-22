@@ -1,0 +1,5 @@
+-- WMS Service — Baseline Migration
+-- Story 1.1: Bootstrap (estrutura vazia — domínio criado na Story 1.2)
+-- Version: 1.0.0
+-- Author: @dev (Dex)
+-- Date: 2026-02-21

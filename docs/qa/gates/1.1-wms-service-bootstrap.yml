@@ -1,0 +1,240 @@
+storyId: "1.1"
+storyTitle: "WMS Service Bootstrap"
+reviewedBy: "@qa (Quinn)"
+reviewDate: "2026-02-21"
+model: "claude-sonnet-4-6"
+
+verdict: CONCERNS
+
+# ─── Acceptance Criteria Traceability ────────────────────────────────────────
+acceptance_criteria:
+  - id: AC1
+    description: "Projeto Spring Boot 3.2.x com Java 21 criado e compilando"
+    verified: true
+    evidence: "pom.xml: spring-boot-starter-parent 3.2.3, java.version 21"
+
+  - id: AC2
+    description: "Conexão PostgreSQL 17 configurada com Flyway e pool HikariCP"
+    verified: true
+    evidence: "application.yml: HikariCP pool-size 20, Flyway baseline-on-migrate. V1__init.sql baseline."
+
+  - id: AC3
+    description: "Conexão Redis 7 funcionando com serialização JSON configurada"
+    verified: true
+    evidence: "RedisConfig.java: GenericJackson2JsonRedisSerializer + JavaTimeModule. Teste RedisIntegrationTest passa."
+
+  - id: AC4
+    description: "Conexão Elasticsearch 8 funcionando"
+    verified: true
+    evidence: "ElasticsearchConfig.java + spring.elasticsearch.uris. ElasticsearchIntegrationTest.clusterIsReachable."
+
+  - id: AC5
+    description: "Spring Actuator com health checks na porta separada (8081)"
+    verified: true
+    evidence: "management.server.port: 8081. Endpoints health,prometheus,metrics,flyway expostos."
+
+  - id: AC6
+    description: "Endpoints liveness e readiness para Kubernetes configurados"
+    verified: true
+    evidence: "management.endpoint.health.probes.enabled: true. K8s deployment com livenessProbe e readinessProbe em /actuator/health/liveness e /readiness."
+
+  - id: AC7
+    description: "Dockerfile multi-stage com imagem < 200MB e usuário não-root"
+    verified: true
+    evidence: "Dockerfile: builder=maven:3.9-eclipse-temurin-21, runtime=eclipse-temurin:21-jre-jammy. UID 1001 (wms). K8s runAsNonRoot: true."
+
+  - id: AC8
+    description: "Manifests Kubernetes completos (deployment, service, configmap, secret, hpa, ingress)"
+    verified: true
+    evidence: "k8s/wms/: deployment.yaml, service.yaml, configmap.yaml, secret.yaml, hpa.yaml, ingress.yaml — 6 manifests presentes."
+
+  - id: AC9
+    description: "Pipeline CI/CD GitHub Actions com test, build Docker e push"
+    verified: true
+    evidence: ".github/workflows/wms-ci.yml: 4 jobs (test→build→scan→deploy). Trivy CRITICAL/HIGH scan. ArgoCD sync."
+
+  - id: AC10
+    description: "Testes de integração com Testcontainers cobrindo PostgreSQL, Redis e Elasticsearch"
+    verified: true
+    evidence: "AbstractIntegrationTest (3 static containers + DynamicPropertySource). WmsServiceBootstrapTest, RedisIntegrationTest, ElasticsearchIntegrationTest — 12 testes de integração."
+
+# ─── Issues Found ─────────────────────────────────────────────────────────────
+issues:
+  - id: QA-1.1-001
+    severity: medium
+    category: code
+    file: "services/wms-service/src/main/java/com/odin/wms/config/ElasticsearchConfig.java"
+    lines: "16-17"
+    description: |
+      URI parsing via String.replace() é frágil. O código usa:
+        .replace("http://", "").replace("https://", "")
+      para extrair host:port. Esta abordagem falha com URIs que contêm credenciais
+      (ex: http://user:pass@host:9200) ou múltiplos hosts. Em produção, o ES_URL
+      pode evoluir para incluir autenticação básica ou clusters multi-node.
+    recommendation: |
+      Substituir por parsing via java.net.URI:
+        URI uri = URI.create(esUrl);
+        String hostAndPort = uri.getHost() + ":" + uri.getPort();
+      Ou usar HttpHost.create(esUrl) do cliente ES para suporte nativo.
+    blocking: false
+    suggested_story: "1.4 (observability) ou como fix em 1.3 quando ES for configurado com auth"
+
+  - id: QA-1.1-002
+    severity: medium
+    category: security
+    file: "services/wms-service/src/main/java/com/odin/wms/config/RedisConfig.java"
+    lines: "25-29"
+    description: |
+      LaissezFaireSubTypeValidator desabilita validação de tipo polimórfico do Jackson,
+      tornando a desserialização potencialmente vulnerável a ataques de gadget chain
+      (CVE-2017-7525 e similares). Para uso como cache Redis com dados controlados
+      internamente o risco é baixo, mas o padrão deve ser evitado.
+    recommendation: |
+      Substituir por BasicPolymorphicTypeValidator com allowlist explícita:
+        PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
+            .allowIfBaseType(Object.class)
+            .allowIfSubType("com.odin.wms.")
+            .build();
+        mapper.activateDefaultTyping(ptv, DefaultTyping.NON_FINAL, As.PROPERTY);
+      Ou preferir tipagem explícita nos beans ao invés de DefaultTyping genérico.
+    blocking: false
+    suggested_story: "Registrar como tech debt — corrigir quando modelo de domínio estiver definido (Story 1.2+)"
+
+  - id: QA-1.1-003
+    severity: low
+    category: security
+    file: "services/wms-service/.github/workflows/wms-ci.yml"
+    lines: "116"
+    description: |
+      `uses: aquasecurity/trivy-action@master` usa a branch master da action, sem
+      pin de versão ou SHA. Supply chain risk: uma mudança maliciosa no repositório
+      upstream afetaria imediatamente todos os builds.
+    recommendation: |
+      Fixar em versão específica com SHA:
+        uses: aquasecurity/trivy-action@0.28.0  # ou pin de SHA
+    blocking: false
+    suggested_story: "Corrigir em qualquer story subsequente que toque no pipeline CI"
+
+  - id: QA-1.1-004
+    severity: low
+    category: code
+    file: "services/wms-service/src/main/java/com/odin/wms/config/SecurityConfig.java"
+    lines: "29-33"
+    description: |
+      anyRequest().permitAll() é intencional e devidamente documentado com Javadoc
+      referenciando Story 1.3. Registrado como dívida técnica explícita.
+    recommendation: "Implementar Keycloak OAuth2/OIDC conforme planejado na Story 1.3."
+    blocking: false
+    suggested_story: "1.3 — WMS Auth & RBAC Keycloak (já planejado)"
+
+# ─── Quality Checks Summary ───────────────────────────────────────────────────
+quality_checks:
+  code_review:
+    status: PASS_WITH_CONCERNS
+    notes: |
+      Padrões gerais sólidos: Spring Boot 3 idiomático, ProblemDetail RFC 7807,
+      graceful shutdown, JPA open-in-view desabilitado, ddl-auto: validate correto.
+      2 issues medium identificados (ElasticsearchConfig URI e RedisConfig DefaultTyping).
+
+  unit_tests:
+    status: PASS
+    notes: |
+      Story de bootstrap — lógica de negócio inexistente, portanto ausência de unit
+      tests é esperada e correta. 12 testes de integração cobrem todos os caminhos
+      relevantes: context load, health checks, Redis R/W, ES connectivity.
+
+  acceptance_criteria:
+    status: PASS
+    notes: "Todos os 10 ACs verificados como implementados."
+
+  no_regressions:
+    status: N_A
+    notes: "Projeto greenfield — não há código preexistente."
+
+  performance:
+    status: PASS
+    notes: |
+      HikariCP max-pool-size 20, Redis lettuce pool, K8s resources requests/limits
+      adequados para bootstrap. JVM flags UseContainerSupport + MaxRAMPercentage=75
+      são boas práticas para containers.
+
+  security:
+    status: PASS_WITH_CONCERNS
+    notes: |
+      Positivos: non-root user (UID 1001), K8s runAsNonRoot, Trivy CRITICAL/HIGH scan,
+      secrets via K8s Secrets anotados para Vault/ESO, STATELESS session, CSRF disabled.
+      Concerns: LaissezFaireSubTypeValidator (QA-1.1-002), trivy-action@master sem pin (QA-1.1-003).
+
+  documentation:
+    status: PASS
+    notes: |
+      README-WMS.md completo: pré-requisitos, variáveis de ambiente, rodando local,
+      testes, health checks, build Docker, deploy K8s. SecurityConfig com Javadoc
+      explicando temporariedade. V1__init.sql com comentários de contexto.
+
+# ─── Non-Functional Requirements ─────────────────────────────────────────────
+nfr_assessment:
+  availability:
+    status: PASS
+    notes: "2 réplicas mínimas, HPA min:2/max:10, liveness/readiness probes configurados."
+
+  observability:
+    status: PASS
+    notes: "Prometheus scrape annotations, métricas JVM via micrometer, logging com traceId/spanId pattern."
+
+  security:
+    status: PASS_WITH_CONCERNS
+    notes: "Ver issues QA-1.1-002 e QA-1.1-003."
+
+  resilience:
+    status: PASS
+    notes: "Graceful shutdown (30s), preStop hook (5s), terminationGracePeriod 60s, circuit-breaker ready via timeouts."
+
+  portability:
+    status: PASS
+    notes: "Dockerfile multi-stage, K8s manifests completos, ArgoCD GitOps, configs via env vars."
+
+# ─── Risk Assessment ──────────────────────────────────────────────────────────
+risk_matrix:
+  - risk: "ElasticsearchConfig URI parsing quebrar em ambiente com autenticação"
+    probability: medium
+    impact: medium
+    score: medium
+    mitigation: "QA-1.1-001 — corrigir antes de Story 1.3+ se ES ganhar autenticação"
+
+  - risk: "Jackson deserialization vulnerability via LaissezFaireSubTypeValidator"
+    probability: low
+    impact: high
+    score: medium
+    mitigation: "QA-1.1-002 — dados Redis são internos, risco atual baixo, mas resolver em Story 1.2+"
+
+  - risk: "Supply chain attack via trivy-action@master"
+    probability: very_low
+    impact: high
+    score: low
+    mitigation: "QA-1.1-003 — pin de versão é boa prática, corrigir oportunisticamente"
+
+# ─── Gate Decision ────────────────────────────────────────────────────────────
+gate_decision:
+  verdict: CONCERNS
+  rationale: |
+    Story 1.1 atinge 100% dos Acceptance Criteria. A implementação está sólida para
+    uma story de bootstrap: arquitetura Spring Boot 3 correta, infraestrutura K8s
+    completa, CI/CD funcional, testes Testcontainers abrangentes.
+
+    Os 2 issues de severidade MEDIUM (ElasticsearchConfig URI fragility e RedisConfig
+    LaissezFaireSubTypeValidator) não bloqueiam o objetivo desta story — ambos são
+    padrões funcionais com risco concreto baixo no contexto atual (URIs simples sem
+    credenciais, Redis com dados internos controlados). São dívidas técnicas que DEVEM
+    ser resolvidas antes das stories que introduzem autenticação no ES e domínio de dados.
+
+    Aprovado com observações. Dívidas técnicas registradas para resolução nas stories
+    dependentes: QA-1.1-001 → Story 1.3+, QA-1.1-002 → Story 1.2+, QA-1.1-003 →
+    próximo toque no pipeline CI.
+
+  approved: true
+  proceed_to: "@devops (Gage) — git push e PR creation"
+  tech_debt_created:
+    - QA-1.1-001
+    - QA-1.1-002
+    - QA-1.1-003

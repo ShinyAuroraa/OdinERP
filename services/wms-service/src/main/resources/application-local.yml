@@ -1,0 +1,32 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8090/realms/odin/protocol/openid-connect/certs
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/wms_db
+    username: wms_user
+    password: wms_pass
+  data:
+    redis:
+      url: redis://localhost:6379
+  elasticsearch:
+    uris: http://localhost:9200
+  jpa:
+    show-sql: true
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+
+logging:
+  level:
+    com.odin.wms: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

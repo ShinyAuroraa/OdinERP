@@ -1,0 +1,12 @@
+target/
+.git/
+.github/
+*.md
+*.iml
+.idea/
+.mvn/
+mvnw
+mvnw.cmd
+k8s/
+argocd/
+docs/
