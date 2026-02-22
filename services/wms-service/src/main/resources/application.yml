@@ -142,6 +142,10 @@ wms:
   cache:
     stock-balance:
       ttl-minutes: ${WMS_CACHE_STOCK_BALANCE_TTL_MINUTES:5}
+  gs1:
+    company-prefix: ${WMS_GS1_COMPANY_PREFIX:0789123}
+  traceability:
+    max-movements: ${WMS_TRACEABILITY_MAX_MOVEMENTS:500}
 
 logging:
   level:

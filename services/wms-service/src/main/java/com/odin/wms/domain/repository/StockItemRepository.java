@@ -148,4 +148,28 @@ public interface StockItemRepository extends JpaRepository<StockItem, UUID> {
             """)
     List<Object[]> sumQuantitiesByZone(@Param("tenantId") UUID tenantId,
                                        @Param("warehouseId") UUID warehouseId);
+
+    // -------------------------------------------------------------------------
+    // Story 4.2 — Rastreabilidade / FEFO Expiry
+    // -------------------------------------------------------------------------
+
+    /**
+     * Busca em lote StockItems com quantidade disponível para múltiplos lotIds.
+     * JOIN FETCH da hierarquia de localização para evitar N+1 em ExpiryResponse.
+     * Usado em LotTraceabilityService.getExpiryByProduct().
+     */
+    @Query("""
+            SELECT s FROM StockItem s
+            JOIN FETCH s.location l
+            JOIN FETCH l.shelf sh
+            JOIN FETCH sh.aisle ai
+            JOIN FETCH ai.zone z
+            JOIN FETCH z.warehouse w
+            WHERE s.tenantId = :tenantId
+              AND s.lot.id IN :lotIds
+              AND s.quantityAvailable > 0
+            """)
+    List<StockItem> findAvailableByTenantIdAndLotIdIn(
+            @Param("tenantId") UUID tenantId,
+            @Param("lotIds") List<UUID> lotIds);
 }

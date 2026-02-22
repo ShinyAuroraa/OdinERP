@@ -10,6 +10,7 @@ import com.odin.wms.dto.response.QuarantineTaskSummaryResponse;
 import com.odin.wms.exception.BusinessException;
 import com.odin.wms.exception.ConflictException;
 import com.odin.wms.exception.ResourceNotFoundException;
+import com.odin.wms.infrastructure.elasticsearch.TraceabilityIndexer;
 import com.odin.wms.messaging.QuarantineEventPublisher;
 import com.odin.wms.service.QuarantineService;
 import org.junit.jupiter.api.AfterEach;
@@ -45,6 +46,7 @@ class QuarantineServiceTest {
     @Mock private StockMovementRepository stockMovementRepository;
     @Mock private AuditLogRepository auditLogRepository;
     @Mock private QuarantineEventPublisher eventPublisher;
+    @Mock private TraceabilityIndexer traceabilityIndexer;
 
     @InjectMocks
     private QuarantineService quarantineService;

@@ -11,6 +11,7 @@ import com.odin.wms.dto.response.ReceivingNoteResponse;
 import com.odin.wms.exception.BusinessException;
 import com.odin.wms.exception.ConflictException;
 import com.odin.wms.exception.ResourceNotFoundException;
+import com.odin.wms.infrastructure.elasticsearch.TraceabilityIndexer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -41,6 +42,7 @@ public class ReceivingNoteService {
     private final StockMovementRepository stockMovementRepository;
     private final AuditLogRepository auditLogRepository;
     private final SerialNumberRepository serialNumberRepository;
+    private final TraceabilityIndexer traceabilityIndexer;
 
     /**
      * Cria nota de recebimento manualmente via REST.
@@ -306,7 +308,7 @@ public class ReceivingNoteService {
                 .quantityAvailable(item.getReceivedQuantity())
                 .build());
 
-        stockMovementRepository.save(StockMovement.builder()
+        StockMovement inboundMovement = stockMovementRepository.save(StockMovement.builder()
                 .tenantId(tenantId)
                 .type(MovementType.INBOUND)
                 .product(product)
@@ -317,6 +319,7 @@ public class ReceivingNoteService {
                 .referenceId(note.getId())
                 .operatorId(operatorId)
                 .build());
+        traceabilityIndexer.indexMovementAsync(inboundMovement);
 
         auditLogRepository.save(AuditLog.builder()
                 .tenantId(tenantId)
@@ -347,7 +350,7 @@ public class ReceivingNoteService {
                 .quantityDamaged(item.getReceivedQuantity())
                 .build());
 
-        stockMovementRepository.save(StockMovement.builder()
+        StockMovement damagedMovement = stockMovementRepository.save(StockMovement.builder()
                 .tenantId(tenantId)
                 .type(MovementType.INBOUND)
                 .product(product)
@@ -358,6 +361,7 @@ public class ReceivingNoteService {
                 .operatorId(operatorId)
                 .reason("DAMAGED — aprovado por supervisor")
                 .build());
+        traceabilityIndexer.indexMovementAsync(damagedMovement);
 
         auditLogRepository.save(AuditLog.builder()
                 .tenantId(tenantId)

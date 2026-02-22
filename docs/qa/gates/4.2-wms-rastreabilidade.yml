@@ -1,0 +1,344 @@
+storyId: "4.2"
+storyTitle: "Rastreabilidade: Lote, Série, Validade & GS1"
+reviewedBy: "@qa (Quinn)"
+reviewDate: "2026-02-22"
+model: "claude-sonnet-4-6"
+
+verdict: CONCERNS
+
+# ─── Acceptance Criteria Traceability ────────────────────────────────────────
+acceptance_criteria:
+  - id: AC1
+    description: "GET /traceability/lot/{lotNumber} — histórico de movimentos por lote com 404 cross-tenant"
+    verified: true
+    evidence: |
+      getLotHistory() usa findByTenantIdAndLotNumber(tenantId, lotNumber) — garante
+      isolamento. Fallback ES→PostgreSQL via fetchMovementsFromEsOrDb(). Testes:
+      getLotHistory_validLot_returns200WithMovements (200+data), getLotHistory_unknownLot_returns404 (404).
+
+  - id: AC2
+    description: "GET /traceability/serial/{serialNumber} — histórico por série com 404 cross-tenant"
+    verified: true
+    evidence: |
+      getSerialHistory() usa findByTenantIdAndSerialNumber(tenantId, serialNumber) — isolamento
+      garantido. Fallback ES→PostgreSQL presente. Testes: getSerialHistory_validSerial_returns200,
+      getSerialHistory_unknownSerial_returns404.
+
+  - id: AC3
+    description: "GET /traceability/lot/{lotId}/tree — árvore completa limitada por wms.traceability.max-movements"
+    verified: true
+    evidence: |
+      getTraceabilityTree() usa findTraceabilityTree(..., PageRequest.of(0, maxMovements)).
+      Tenant isolation via .filter(l -> tenantId.equals(l.getTenantId())). computeCurrentStatus()
+      calcula CONSUMED/PARTIALLY_CONSUMED/IN_STOCK. Teste: getTraceabilityTree_validLot_returns200WithEvents.
+
+  - id: AC4
+    description: "GET /traceability/product/{productId}/expiry — FEFO com filtros opcionais"
+    verified: true
+    evidence: |
+      findAvailableByProductFefo com ORDER BY expiryDate ASC NULLS LAST. Filtro warehouseId aplicado
+      na camada de serviço via navegação de hierarquia. daysUntilExpiry null para Lot.expiryDate=null.
+      Teste: getExpiryByProduct_validProduct_returns200FefoSorted (qtd=15 verificada).
+
+  - id: AC5
+    description: "POST /gs1/parse — parsing EAN13/GS1_128/SSCC/QR_CODE com check digit e AIs"
+    verified: true
+    evidence: |
+      GS1Parser.parse() com switch para todos os 4 formatos. EAN-13→GTIN-14 com leading zero.
+      validateCheckDigit() algoritmo padrão GS1 (alternância 3/1). extractAIs() com KNOWN_AIS map.
+      BusinessException para AI não reconhecido ou formato inválido. 5 cenários unitários em GS1ServiceTest.
+      Teste de integração: parseGs1_validGs1128_returns200WithParsedFields.
+
+  - id: AC6
+    description: "GET /gs1/generate — geração GS1-128 + SSCC + EAN-13 formatado"
+    verified: true
+    evidence: |
+      GS1Generator.generate() com validação GTIN-14 (14 dígitos + check digit). buildGs1128()
+      concatena AIs opcionais (lote, validade, série). buildSscc() com companyPrefix.
+      humanReadable em PT-BR. Teste: generateGs1_validGtin_returns200WithAllCodes.
+
+  - id: AC7
+    description: "Elasticsearch indexação @Async e fallback gracioso para PostgreSQL"
+    verified: true
+    evidence: |
+      TraceabilityIndexer.indexMovementAsync() — @Async, catch(Exception e) sem propagação.
+      @Async configurado via AsyncConfig (@EnableAsync). TraceabilityDocument com índice
+      'wms-traceability' multi-tenant. ES-first em getLotHistory() e getSerialHistory() com
+      fallback em catch(). 7 cenários unitários em TraceabilityServiceTest cobrindo ES-hit,
+      ES-empty→fallback, ES-throws→fallback. QA-1.1-001 resolvido: ElasticsearchConfig usa URI.create().
+
+  - id: AC8
+    description: "Isolamento multi-tenant em todos os endpoints"
+    verified: true
+    evidence: |
+      findByTenantIdAndLotNumber, findByTenantIdAndSerialNumber — filtros tenantId em todas as queries.
+      findAvailableByProductFefo filtra por tenantId. getTraceabilityTree usa filter() para validar tenant.
+      TraceabilityRepository queries incluem tenantId.toString().
+
+  - id: AC9
+    description: "RBAC: WMS_OPERATOR, WMS_SUPERVISOR, WMS_ADMIN → 200; sem role WMS → 403; sem token → 401"
+    verified: partial
+    evidence: |
+      @PreAuthorize("hasAnyRole('WMS_OPERATOR','WMS_SUPERVISOR','WMS_ADMIN')") em todos os endpoints.
+      Testado: WMS_ADMIN (200), WMS_SUPERVISOR (200 — carry-forward CONCERN-4 de 4.1), sem token (401).
+      NÃO testado: token válido sem role WMS → 403 (ausente no integration test — ver CONCERN-1).
+
+  - id: AC10
+    description: "12 cenários de testes unitários em TraceabilityServiceTest + GS1ServiceTest"
+    verified: true
+    evidence: |
+      TraceabilityServiceTest: 7 cenários (ES-first, fallback, 404, FEFO, ES-throws→fallback).
+      GS1ServiceTest: 5 cenários (EAN13, GS1_128 full, AI desconhecido, generate completo, check inválido).
+      BUILD SUCCESS com JaCoCo ≥ 80% verificado por ./mvnw verify — "All coverage checks have been met".
+
+  - id: AC11
+    description: "10 cenários de integração em TraceabilityControllerIntegrationTest (incl. CONCERN-4 carry-forward)"
+    verified: partial
+    evidence: |
+      9 de 10 cenários implementados. Ausente: getLotHistory_noWmsRole_returns403.
+      Implementados: validLot_200, unknownLot_404, noToken_401, supervisorRole_200,
+      validSerial_200, unknownSerial_404, tree_200, expiry_200, gs1Parse_200, gs1Generate_200.
+
+# ─── Issues Found ─────────────────────────────────────────────────────────────
+issues:
+  - id: CONCERN-1
+    severity: medium
+    category: tests
+    file: "src/test/java/com/odin/wms/traceability/TraceabilityControllerIntegrationTest.java"
+    description: |
+      Teste getLotHistory_noWmsRole_returns403 ausente.
+      AC9 e AC11 exigem explicitamente: "token válido sem nenhuma role WMS → 403 Forbidden".
+      Este cenário é carry-forward do CONCERN-4 de Story 4.1, que comprometia seu endereçamento
+      em Story 4.2. O supervisor foi testado (wms-supervisor_200 ✅), mas o caso de 403
+      (JWT válido com role inválida como ROLE_FINANCE, por exemplo) não foi coberto.
+      @PreAuthorize garante o comportamento correto em produção, mas a cobertura de teste
+      permanece incompleta para este AC explícito.
+    recommendation: |
+      Adicionar cenário em próxima story ou enhancement:
+        @Test
+        void getLotHistory_withNonWmsRole_returns403() {
+            mockMvc.perform(get("/api/v1/traceability/lot/LOT-X")
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_FINANCE"))))
+                .andExpect(status().isForbidden());
+        }
+    blocking: false
+    suggested_story: "4.3 ou enhancement"
+
+  - id: CONCERN-2
+    severity: waived
+    status: waived
+    waived_by: "@architect (Aria)"
+    waived_date: "2026-02-22"
+    category: spec
+    file: "src/main/java/com/odin/wms/domain/repository/LotRepository.java"
+    description: |
+      GET /traceability/product/{productId}/expiry — o pathVariable {productId} é resolvido
+      via l.product.id (JPA entity UUID de BaseEntity) na query JPQL findAvailableByProductFefo.
+      A entidade ProductWms possui dois UUIDs distintos:
+        - ProductWms.id (JPA gerado — BaseEntity) — identificador interno WMS
+        - ProductWms.productId (UUID do ERP externo) — correlação cross-service (sem FK)
+    waiver_rationale: |
+      Decisão arquitetural confirmada por @architect (Aria) em 2026-02-22:
+
+      1. DDL (V1__init.sql): lots.product_id REFERENCES products_wms(id) — a FK aponta para
+         ProductWms.id (JPA PK), não para ProductWms.productId (ERP UUID). A implementação
+         segue a modelagem de dados correta.
+
+      2. ProductWms.productId (coluna product_id, ERP UUID) serve exclusivamente para
+         correlação de eventos cross-service. Não é o identificador público da API WMS.
+
+      3. Consistência com Story 4.1: StockItemRepository usa a mesma convenção
+         "AND (:productId IS NULL OR p.id = :productId)" — ProductWms.id como
+         identificador de produto nos endpoints WMS.
+
+      4. Padrão correto e intencional em toda a camada WMS. Sem ação necessária.
+    blocking: false
+
+  - id: CONCERN-3
+    severity: low
+    category: tests
+    file: "src/test/java/com/odin/wms/traceability/TraceabilityControllerIntegrationTest.java"
+    description: |
+      AC11 especifica o cenário getLotHistory_differentTenant_returns404 como teste explícito
+      de cross-tenant isolation. A implementação inclui getLotHistory_unknownLot_returns404
+      (lote "LOT-INEXISTENTE" que não existe), mas não cria um fixture com tenantId diferente
+      para demonstrar explicitamente que lotes de outro tenant retornam 404.
+      O comportamento de isolamento está garantido pelo findByTenantIdAndLotNumber(tenantId, lotNumber),
+      mas o teste não cria a prova explícita do cross-tenant scenario.
+    recommendation: |
+      Adicionar fixture de outro tenant como enhancement de clareza (não funcional):
+        Lot tenantBLot = createLotForTenant(otherTenantId, "LOT-TENANT-B");
+        mockMvc.perform(withAdminJwt(get("/api/v1/traceability/lot/LOT-TENANT-B")))
+               .andExpect(status().isNotFound()); // tenantId do JWT ≠ tenantId do lote
+    blocking: false
+    suggested_story: "Enhancement de cobertura de testes"
+
+  - id: CONCERN-4
+    severity: low
+    category: code
+    file: "src/main/java/com/odin/wms/service/LotTraceabilityService.java"
+    description: |
+      Assimetria de campos entre path ES e path PostgreSQL no MovementItemResponse.
+      Path PostgreSQL: campo reason (m.getReason()) populado ← dados completos
+      Path ES: campo reason retorna null ← TraceabilityDocument não indexa o campo reason/notes
+      Se ES estiver disponível, clientes que dependem do campo reason no response podem
+      observar null onde esperariam o valor. Após migração completa para ES em produção,
+      o campo reason nunca seria retornado.
+    recommendation: |
+      Adicionar campo reason ao TraceabilityDocument e ao TraceabilityIndexer.toDocument():
+        doc.setReason(movement.getReason());
+      Não bloqueante — fallback PostgreSQL retorna dados completos enquanto ES está sendo populado.
+    blocking: false
+    suggested_story: "4.4 (Auditoria Imutável) ou enhancement de TraceabilityDocument"
+
+# ─── Quality Checks Summary ───────────────────────────────────────────────────
+quality_checks:
+  code_review:
+    status: PASS
+    notes: |
+      Padrão ES-first com fallback gracioso via try/catch — implementação correta.
+      @Async sem propagação de exceção em TraceabilityIndexer — degradação graciosa conforme AC7.
+      GS1Parser usa LinkedHashMap para preservar ordem de insertion dos AIs.
+      validateCheckDigit() implementa algoritmo GS1 (alternância 3/1 com check digit) corretamente.
+      parseExpiryDate() trata convenção GS1 de day=00 como último dia do mês.
+      computeCurrentStatus() usa MovementType.SHIPPING (enum correto, verificado em MovementType.java).
+      TraceabilityDocument sem Lombok por compatibilidade com Spring Data ES — decisão correta documentada.
+      LotTraceabilityService.@Transactional(readOnly=true) — otimização correta para service de leitura.
+
+  unit_tests:
+    status: PASS
+    notes: |
+      TraceabilityServiceTest: 7 cenários com @InjectMocks para LotTraceabilityService e
+      SerialTraceabilityService compartilhando os mesmos @Mock repositories (padrão válido em Mockito).
+      GS1ServiceTest: 5 cenários com setup via ReflectionTestUtils para @Value companyPrefix.
+      Reflexão para setId() usa nome da classe base correto (BaseAppendOnlyEntity para Lot,
+      BaseEntity para SerialNumber/ProductWms). JaCoCo ≥ 80% confirmado: "All coverage checks have been met".
+
+  acceptance_criteria:
+    status: CONCERNS
+    notes: |
+      9 de 11 AC plenamente verificados. AC9 e AC11 parcialmente verificados —
+      cenário noWmsRole_returns403 ausente (ver CONCERN-1). Comportamento de produção
+      está correto via @PreAuthorize, mas cobertura de teste incompleta.
+
+  no_regressions:
+    status: PASS
+    notes: |
+      TraceabilityIndexer adicionado a PutawayService, QuarantineService, ReceivingNoteService
+      sem alteração de comportamento de escrita. @Mock TraceabilityIndexer adicionado aos
+      testes existentes (PutawayServiceTest, QuarantineServiceTest, ReceivingNoteServiceTest)
+      prevenindo NullPointerException. BUILD SUCCESS completo confirma zero regressões.
+      Testes das stories anteriores (1.1–4.1) continuam passando.
+
+  performance:
+    status: PASS
+    notes: |
+      TraceabilityIndexer @Async — operações de escrita no PostgreSQL não bloqueiam por ES.
+      findTraceabilityTree com PageRequest.of(0, maxMovements=500) — N limitado.
+      findAvailableByProductFefo com LEFT JOIN FETCH l.product — evita N+1 em product.
+      getExpiryByProduct agrupa StockItems por lotId em memória via Collectors.groupingBy —
+      equivalente a 2 queries (lots + items) em vez de N queries. Aceitável para volumes moderados.
+
+  security:
+    status: PASS
+    notes: |
+      Multi-tenant isolation verificado em todos os paths: findByTenantIdAndLotNumber,
+      findByTenantIdAndSerialNumber, findAvailableByProductFefo, .filter(tenantId.equals()).
+      @PreAuthorize em todos os endpoints — WMS_OPERATOR, WMS_SUPERVISOR, WMS_ADMIN.
+      Input validation em path params: @Size(max=50) + @Pattern(regexp="^[A-Za-z0-9\\-_]+$").
+      TraceabilityDocument queries no ES sempre filtram por tenantId (Keyword field).
+      validateCheckDigit() previne injeção de GTINs malformados.
+      GTIN em /gs1/generate validado com 14 dígitos + apenas dígitos + check digit.
+
+  documentation:
+    status: PASS
+    notes: |
+      Todos os arquivos com Javadoc referenciando o AC correspondente.
+      TraceabilityDocument documenta decisão de índice único multi-tenant.
+      GS1ApplicationIdentifier referencia GS1 General Specifications v24.
+      parseExpiryDate documenta convenção GS1 de day=00.
+      Tech debt QA-1.1-001 (ElasticsearchConfig URI parsing) fechado com URI.create().
+
+# ─── Non-Functional Requirements ─────────────────────────────────────────────
+nfr_assessment:
+  performance:
+    status: PASS
+    notes: "Indexação assíncrona + fallback gracioso + queries com JOIN FETCH garantem latência aceitável."
+
+  security:
+    status: PASS
+    notes: "Isolamento multi-tenant completo; RBAC declarativo; input validation nos path params."
+
+  resilience:
+    status: PASS
+    notes: "ES degradation graciosa via try/catch em ambos os services. Fallback PostgreSQL testado."
+
+  observability:
+    status: PASS
+    notes: "log.warn() em falhas ES com movementId e tenantId para diagnóstico. log.debug() para fallback normal."
+
+  standards:
+    status: PASS
+    notes: "GS1 General Specifications v24 — AIs corretos, check digit algoritmo conforme spec."
+
+# ─── Risk Assessment ──────────────────────────────────────────────────────────
+risk_matrix:
+  - risk: "Cobertura RBAC incompleta para 403 Forbidden"
+    probability: low
+    impact: low
+    score: low
+    mitigation: "CONCERN-1 — @PreAuthorize garante comportamento em produção; teste como enhancement"
+
+  - risk: "Inconsistência semantica de productId na API pública"
+    probability: none
+    impact: none
+    score: waived
+    mitigation: "CONCERN-2 WAIVED — @architect confirmou que ProductWms.id é o identificador WMS correto (ver waiver_rationale)"
+
+  - risk: "Campo reason null no path ES em produção"
+    probability: low
+    impact: low
+    score: low
+    mitigation: "CONCERN-4 — adicionar reason ao TraceabilityDocument em Story 4.4"
+
+  - risk: "findByTenantIdAndLotNumber pode retornar múltiplos se lotNumber não é único por tenant"
+    probability: low
+    impact: medium
+    score: low
+    mitigation: "Assumido que lotNumber é único por tenant — adicionar unique constraint se necessário"
+
+# ─── Gate Decision ────────────────────────────────────────────────────────────
+gate_decision:
+  verdict: CONCERNS
+  rationale: |
+    Story 4.2 implementa uma funcionalidade complexa e crítica (rastreabilidade GS1 com ES
+    e fallback PostgreSQL) com qualidade técnica elevada. BUILD SUCCESS confirmado via
+    ./mvnw verify com JaCoCo ≥ 80% em todos os services.
+
+    O padrão ES-first com fallback gracioso é implementado corretamente em ambos os services.
+    GS1 parsing e geração estão conformes à GS1 General Specifications v24. Isolamento
+    multi-tenant verificado em todos os paths. RBAC correto via @PreAuthorize.
+    Tech debt QA-1.1-001 (ElasticsearchConfig) fechado.
+
+    Issues encontrados:
+    - 1 × MEDIUM (não bloqueante): teste 403 ausente (CONCERN-1)
+    - 1 × WAIVED: semantica productId (CONCERN-2 — @architect confirmou implementação correta em 2026-02-22)
+    - 2 × LOW (não bloqueantes): cross-tenant fixture implícito (CONCERN-3), reason null no ES (CONCERN-4)
+
+    CONCERN-1 é o mais importante: o cenário noWmsRole_returns403 foi explicitamente
+    comprometido em CONCERN-4 de Story 4.1 para ser entregue em 4.2 — e não foi.
+    A implementação RBAC está correta; a lacuna é apenas de cobertura de teste.
+
+    CONCERN-2 foi investigado por @architect (Aria): ProductWms.id (JPA PK) é o identificador
+    correto para a API WMS — ProductWms.productId (ERP UUID) é apenas para correlação
+    cross-service. DDL e Story 4.1 confirmam o padrão. Waivered.
+
+    Aprovado com concerns. Story pode prosseguir para @devops (push + PR).
+
+  approved: true
+  proceed_to: "@devops (Gage) — git push origin feature/4.1-wms-stock-balance e PR creation"
+  tech_debt_created:
+    - CONCERN-1  # Adicionar getLotHistory_noWmsRole_returns403 em Story 4.3 ou enhancement
+    - CONCERN-4  # Adicionar reason ao TraceabilityDocument em Story 4.4
+  waivers:
+    - CONCERN-2  # Waived por @architect (Aria) em 2026-02-22 — implementação arquiteturalmente correta

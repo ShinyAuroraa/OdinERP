@@ -20,4 +20,14 @@ public interface SerialNumberRepository extends JpaRepository<SerialNumber, UUID
 
     boolean existsByTenantIdAndProductIdAndSerialNumber(
             UUID tenantId, UUID productId, String serialNumber);
+
+    // -------------------------------------------------------------------------
+    // Story 4.2 — Rastreabilidade
+    // -------------------------------------------------------------------------
+
+    /**
+     * Busca número de série por tenantId + serialNumber (sem exigir productId).
+     * Usado em GET /traceability/serial/{serialNumber}.
+     */
+    Optional<SerialNumber> findByTenantIdAndSerialNumber(UUID tenantId, String serialNumber);
 }

@@ -9,6 +9,7 @@ import com.odin.wms.dto.response.PutawayTaskSummaryResponse;
 import com.odin.wms.exception.BusinessException;
 import com.odin.wms.exception.ConflictException;
 import com.odin.wms.exception.ResourceNotFoundException;
+import com.odin.wms.infrastructure.elasticsearch.TraceabilityIndexer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -37,6 +38,7 @@ public class PutawayService {
     private final StockItemRepository stockItemRepository;
     private final StockMovementRepository stockMovementRepository;
     private final AuditLogRepository auditLogRepository;
+    private final TraceabilityIndexer traceabilityIndexer;
 
     /**
      * Gera tarefas de putaway para todos os StockItems de uma nota de recebimento.
@@ -143,7 +145,7 @@ public class PutawayService {
         stockItemRepository.save(stockItem);
 
         // Rastreio de movimentação
-        stockMovementRepository.save(StockMovement.builder()
+        StockMovement putawayMovement = stockMovementRepository.save(StockMovement.builder()
                 .tenantId(tenantId)
                 .type(MovementType.PUTAWAY)
                 .product(stockItem.getProduct())
@@ -155,6 +157,7 @@ public class PutawayService {
                 .referenceId(task.getId())
                 .operatorId(operatorId)
                 .build());
+        traceabilityIndexer.indexMovementAsync(putawayMovement);
 
         auditLogRepository.save(AuditLog.builder()
                 .tenantId(tenantId)
