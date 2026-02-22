@@ -1,0 +1,55 @@
+schema: 1
+story: '1.3'
+gate: PASS
+status_reason: >
+  All 6 acceptance criteria are met and ./gradlew test returns BUILD SUCCESSFUL (6 tests passing).
+  Implementation is secure, stateless, and well-tested with no high-severity issues.
+reviewer: 'Quinn'
+updated: '2026-02-22T00:00:00Z'
+top_issues:
+  - id: 'MNT-001'
+    severity: low
+    finding: >
+      Unchecked cast (List<String>) in KeycloakJwtAuthenticationConverter.extractRoles() —
+      ClassCastException possible if JWT realm_access.roles is not a List. Risk is low because
+      JWT is validated via Keycloak JWKS before reaching this code.
+    suggested_action: >
+      Consider adding a defensive try-catch or instanceof check in a future refactoring story.
+      Not blocking for current scope.
+  - id: 'TEST-001'
+    severity: low
+    finding: >
+      actuatorHealth_withoutToken_isPublic() test expects 404 (not 200 as stated in AC6) due to
+      @WebMvcTest not loading actuator endpoints. The 404 correctly confirms permitAll() is active
+      (security did not block at 401). Full actuator 200 coverage provided by CrmApplicationSmokeTest.
+    suggested_action: >
+      No action needed. Known @WebMvcTest limitation is documented with a clear comment in the test.
+      AC6 coverage is complete across CrmApplicationSmokeTest + SecurityMvcTest combined.
+  - id: 'MNT-002'
+    severity: low
+    finding: >
+      Collectors.toList() used in MeController — Stream.toList() (available in Java 16+, Java 21 in use)
+      is more idiomatic and returns an unmodifiable list.
+    suggested_action: >
+      Cosmetic refactoring, optional. Can be addressed as part of any future controller update.
+
+checks:
+  code_review: PASS
+  unit_tests: PASS
+  acceptance_criteria: PASS
+  no_regressions: PASS
+  performance: PASS
+  security: PASS
+  documentation: PASS
+
+notes:
+  - 'All 4 SecurityMvcTest tests pass: withoutToken_returns401, withValidCrmToken_returns200, withNonCrmToken_returns403, actuatorHealth_withoutToken_isPublic'
+  - 'CrmApplicationSmokeTest (×2) passes without modification — KeycloakJwtAuthenticationConverter auto-detected as @Component'
+  - 'SchemaIntegrationTest (×4) unaffected — crm-infrastructure module unchanged'
+  - '@WebMvcTest pattern: @ActiveProfiles("test") + @MockBean JwtDecoder required to prevent Keycloak contact — documented in Debug Log'
+  - 'spring-security-test added to libs.versions.toml without version.ref (BOM-managed) — correct pattern'
+  - 'MeController @PreAuthorize("hasAnyRole(...)") design decision: restricts /me to CRM users only (correct for CRM API boundary)'
+  - 'issuer-uri: ${KEYCLOAK_ISSUER_URI} in application.yml base has no default — required for production (correct)'
+
+waiver:
+  active: false

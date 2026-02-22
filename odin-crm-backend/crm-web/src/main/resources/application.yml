@@ -1,6 +1,11 @@
 spring:
   application:
     name: odin-crm-backend
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:odin_crm}
     username: ${DB_USER}

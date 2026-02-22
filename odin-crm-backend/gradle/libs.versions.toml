@@ -66,6 +66,7 @@ micrometer-tracing-otel = { module = "io.micrometer:micrometer-tracing-bridge-ot
 logstash-logback        = { module = "net.logstash.logback:logstash-logback-encoder",                         version.ref = "logstashLogbackEncoder" }
 
 # Testing
+spring-security-test    = { module = "org.springframework.security:spring-security-test" }
 junit-jupiter           = { module = "org.junit.jupiter:junit-jupiter",              version.ref = "junit" }
 mockito-core            = { module = "org.mockito:mockito-core",                      version.ref = "mockito" }
 assertj-core            = { module = "org.assertj:assertj-core",                      version.ref = "assertj" }

@@ -31,6 +31,7 @@ dependencies {
 
     // Testing
     testImplementation(libs.spring.boot.test)
+    testImplementation(libs.spring.security.test)
     testImplementation(libs.h2)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
