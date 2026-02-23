@@ -116,4 +116,43 @@ public interface LocationRepository extends JpaRepository<Location, UUID> {
     List<Location> findQuarantineByWarehouse(
             @Param("warehouseId") UUID warehouseId,
             @Param("tenantId") UUID tenantId);
+
+    // -------------------------------------------------------------------------
+    // Story 4.1 — Controle de Estoque em Tempo Real
+    // -------------------------------------------------------------------------
+
+    /**
+     * Contagem de localizações por zona (Spring Data derived query — Task 6.1).
+     * Navega shelf.aisle.zone.id de forma implícita pelo Spring Data JPA.
+     */
+    long countByTenantIdAndShelfAisleZoneId(UUID tenantId, UUID zoneId);
+
+    /**
+     * Contagem de localizações por zona em lote (para um warehouse inteiro).
+     * Evita N+1: uma única query retorna contagens para todas as zonas do warehouse.
+     * Retorna List<Object[]> onde [0]=zoneId (UUID), [1]=count (Long).
+     */
+    @Query("""
+            SELECT l.shelf.aisle.zone.id, COUNT(l)
+            FROM Location l
+            JOIN l.shelf s JOIN s.aisle a JOIN a.zone z
+            WHERE l.tenantId = :tenantId AND z.warehouse.id = :warehouseId
+            GROUP BY l.shelf.aisle.zone.id
+            """)
+    List<Object[]> countLocationsByZone(@Param("tenantId") UUID tenantId,
+                                        @Param("warehouseId") UUID warehouseId);
+
+    /**
+     * Soma da capacidade (capacityUnits) por zona em lote.
+     * Retorna List<Object[]> onde [0]=zoneId (UUID), [1]=sumCapacity (Long, COALESCE → 0 se null).
+     */
+    @Query("""
+            SELECT l.shelf.aisle.zone.id, COALESCE(SUM(l.capacityUnits), 0)
+            FROM Location l
+            JOIN l.shelf s JOIN s.aisle a JOIN a.zone z
+            WHERE l.tenantId = :tenantId AND z.warehouse.id = :warehouseId
+            GROUP BY l.shelf.aisle.zone.id
+            """)
+    List<Object[]> sumCapacityUnitsByZone(@Param("tenantId") UUID tenantId,
+                                          @Param("warehouseId") UUID warehouseId);
 }

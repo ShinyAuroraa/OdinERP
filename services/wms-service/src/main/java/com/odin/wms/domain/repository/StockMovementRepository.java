@@ -5,9 +5,12 @@ import com.odin.wms.domain.enums.MovementType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,4 +26,56 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, UU
             UUID tenantId, MovementType type, Instant from, Instant to, Pageable pageable);
 
     Optional<StockMovement> findByTenantIdAndReferenceId(UUID tenantId, UUID referenceId);
+
+    // -------------------------------------------------------------------------
+    // Story 4.2 — Rastreabilidade
+    // -------------------------------------------------------------------------
+
+    /**
+     * Histórico completo de movimentos de um lote, ordenado cronologicamente.
+     * JOIN FETCH para evitar N+1 em product, sourceLocation, destinationLocation.
+     */
+    @Query("""
+            SELECT m FROM StockMovement m
+            LEFT JOIN FETCH m.sourceLocation
+            LEFT JOIN FETCH m.destinationLocation
+            WHERE m.tenantId = :tenantId
+              AND m.lot.id = :lotId
+            ORDER BY m.createdAt ASC
+            """)
+    List<StockMovement> findByTenantIdAndLotIdOrderByCreatedAtAsc(
+            @Param("tenantId") UUID tenantId,
+            @Param("lotId") UUID lotId);
+
+    /**
+     * Histórico completo de movimentos de um número de série, ordenado cronologicamente.
+     */
+    @Query("""
+            SELECT m FROM StockMovement m
+            LEFT JOIN FETCH m.sourceLocation
+            LEFT JOIN FETCH m.destinationLocation
+            WHERE m.tenantId = :tenantId
+              AND m.serialNumber.id = :serialNumberId
+            ORDER BY m.createdAt ASC
+            """)
+    List<StockMovement> findByTenantIdAndSerialNumberIdOrderByCreatedAtAsc(
+            @Param("tenantId") UUID tenantId,
+            @Param("serialNumberId") UUID serialNumberId);
+
+    /**
+     * Árvore de rastreabilidade — movimentos de um lote com paginação para limite configurável.
+     * Usado em GET /traceability/lot/{lotId}/tree com wms.traceability.max-movements.
+     */
+    @Query("""
+            SELECT m FROM StockMovement m
+            LEFT JOIN FETCH m.sourceLocation
+            LEFT JOIN FETCH m.destinationLocation
+            WHERE m.tenantId = :tenantId
+              AND m.lot.id = :lotId
+            ORDER BY m.createdAt ASC
+            """)
+    List<StockMovement> findTraceabilityTree(
+            @Param("tenantId") UUID tenantId,
+            @Param("lotId") UUID lotId,
+            Pageable pageable);
 }

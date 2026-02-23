@@ -1,0 +1,337 @@
+storyId: "4.3"
+storyTitle: "Inventário Físico (Contagem de Estoque)"
+reviewedBy: "@qa (Quinn)"
+reviewDate: "2026-02-22"
+model: "claude-sonnet-4-6"
+
+verdict: CONCERNS
+
+# ─── Acceptance Criteria Traceability ────────────────────────────────────────
+acceptance_criteria:
+  - id: AC1
+    description: "POST /inventory/count — criar sessão DRAFT com totalItems gerado automaticamente"
+    verified: true
+    evidence: |
+      createCount() valida CYCLIC requer zoneId, salva InventoryCount com status=DRAFT,
+      gera InventoryCountItem para cada StockItem no escopo (findAllByTenantIdAndZoneId para
+      CYCLIC, findByFilters para FULL). toCountResponse() retorna todos os campos especificados.
+      Testes: createCount_asSupervisor_returns201 (201+countId+status+totalItems).
+
+  - id: AC2
+    description: "POST /count/{countId}/start — DRAFT → IN_PROGRESS com startedAt"
+    verified: true
+    evidence: |
+      startCount() valida status=DRAFT, seta status=IN_PROGRESS, startedAt=Instant.now(), salva.
+      Teste de integração: close_afterApproval_returns200 encadeia start → ... → close.
+      Retorna InventoryCountResponse com estado atualizado.
+
+  - id: AC3
+    description: "GET /count/{countId}/items — lista paginada com expectedQty e countedQty null"
+    verified: true
+    evidence: |
+      findByInventoryCountIdWithDetails() usa JPQL com LEFT JOIN FETCH para location, product, lot.
+      @PageableDefault(size=50). getCount() valida tenant antes de query de itens.
+      Teste: submitCount_asOperator_returns200 → getCountItems → get(0).itemId.
+
+  - id: AC4
+    description: "PATCH /count/{countId}/items/{itemId} — submeter contagem com divergência calculada"
+    verified: true
+    evidence: |
+      submitCount() valida status=IN_PROGRESS, seta countedQty, calcula divergenceQty e
+      divergencePct via calculateDivergencePct() com abs() e scale 4. Status=COUNTED.
+      Testes: submitCount_asOperator_returns200 (200+countedQty+status+divergenceQty),
+      submitCount_withNonWmsRole_returns403 (CONCERN-1 de Story 4.2 ✅ endereçado).
+
+  - id: AC5
+    description: "POST /count/{countId}/reconcile — categorização AUTO_APPROVED vs PENDING_APPROVAL"
+    verified: true
+    evidence: |
+      reconcile() processa COUNTED+SECOND_COUNTED, compara abs(divergencePct) com threshold.
+      divergenceQty=0 → AUTO_APPROVED (noVariance). pct ≤ threshold → AUTO_APPROVED.
+      pct > threshold → PENDING_APPROVAL. Retorna ReconciliationSummaryResponse.
+      Testes unitários: reconcile_itemWithinThreshold_autoApproves (3% ≤ 5% → AUTO_APPROVED),
+      reconcile_itemAboveThreshold_pendingApproval (15% > 5% → PENDING_APPROVAL).
+      Teste de integração: reconcile_asSupervisor_returns200WithSummary.
+
+  - id: AC6
+    description: "POST /count/{countId}/items/{itemId}/second-count — média das duas contagens"
+    verified: true
+    evidence: |
+      submitSecondCount() valida status=RECONCILED no count, status=PENDING_APPROVAL no item.
+      adjustedQty = (countedQty + secondCountedQty) / 2 com HALF_UP scale=3. Status=SECOND_COUNTED.
+      Divergência recalculada com adjustedQty. Teste unitário: secondCount_recalculatesDivergence
+      (avg(80,84)=82, divergencePct=18.0000).
+
+  - id: AC7
+    description: "POST /count/{countId}/approve — ajustes de estoque + StockMovement + ES + cache eviction"
+    verified: true
+    evidence: |
+      approveAdjustments() processa AUTO_APPROVED+PENDING_APPROVAL+SECOND_COUNTED.
+      Para delta≠0: stockItem.setQuantityAvailable(), stockMovementRepository.save() com
+      type=INVENTORY_ADJUSTMENT + referenceType=INVENTORY_COUNT, traceabilityIndexer.indexMovementAsync().
+      stockBalanceService.evictAll() ao final. Testes: approve_createsStockMovementsAndEvictsCache
+      (verifica MovementType + quantity=-10 + evictAll), approve_callsTraceabilityIndexer,
+      approve_asSupervisor_adjustsStockAndCreatesMovements (integração: qty 100→90 verificado).
+
+  - id: AC8
+    description: "POST /count/{countId}/close — APPROVED → CLOSED com closedAt"
+    verified: true
+    evidence: |
+      closeCount() valida status=APPROVED, seta status=CLOSED, closedAt=Instant.now().
+      Teste de integração: close_afterApproval_returns200 (status=CLOSED).
+
+  - id: AC9
+    description: "RBAC e isolamento multi-tenant"
+    verified: true
+    evidence: |
+      @PreAuthorize em todos os 8 endpoints conforme spec: WMS_OPERATOR apenas GET+PATCH items.
+      WMS_SUPERVISOR/WMS_ADMIN: todas as operações. Testes: createCount_asOperator_returns403,
+      createCount_withoutToken_returns401, submitCount_withNonWmsRole_returns403 (ROLE_FINANCE→403).
+      Tenant isolation: getCount() usa findByIdAndTenantId — retorna 404 para outro tenant.
+
+  - id: AC10
+    description: "INVENTORY_ADJUSTMENT adicionado ao enum MovementType"
+    verified: true
+    evidence: |
+      MovementType.java com INVENTORY_ADJUSTMENT. V7__inventory_count.sql atualiza CHECK constraint
+      em stock_movements para incluir 'INVENTORY_ADJUSTMENT'. StockMovement criado com
+      type=INVENTORY_ADJUSTMENT e reason="Ajuste de inventário #{countId}".
+
+  - id: AC11
+    description: "8 testes unitários + 8 integração + JaCoCo ≥ 80%"
+    verified: true
+    evidence: |
+      InventoryServiceTest: 8 cenários com @ExtendWith(MockitoExtension.class) — cobrindo
+      createCount (FULL+CYCLIC), reconcile (threshold), approve (movement+cache+indexer+optimisticLock),
+      secondCount (recalc divergência). InventoryControllerIntegrationTest: 8 cenários end-to-end
+      via AbstractIntegrationTest (Testcontainers PG+Redis+ES). JaCoCo ≥ 80% confirmado:
+      ./mvnw verify → BUILD SUCCESS 236 testes, 0 falhas.
+
+# ─── Issues Found ─────────────────────────────────────────────────────────────
+issues:
+  - id: PERF-001
+    severity: medium
+    category: performance
+    file: "src/main/java/com/odin/wms/domain/repository/InventoryCountItemRepository.java"
+    description: |
+      findByInventoryCountIdWithDetails() usa JOIN FETCH com Pageable. Hibernate 6 + Spring Data JPA
+      emite HHH90003004: "HHH90003004: firstResult/maxResults specified with collection fetch;
+      applying in memory". Para inventários com muitos itens (ex: armazém com 10k+ SKUs),
+      Hibernate carrega todos os registros em memória antes de paginar, consumindo heap excessivamente.
+      Este padrão é tecnicamente funcional para volumes atuais de teste (1-50 itens) mas não
+      escalará adequadamente em produção com armazéns maiores.
+    recommendation: |
+      Separar em duas queries: (1) IDs paginados sem JOIN FETCH, (2) busca dos detalhes
+      pelos IDs retornados — padrão recomendado pela Vlad Mihalcea para paginação + fetch:
+        @Query("SELECT i.id FROM InventoryCountItem i WHERE i.inventoryCountId = :countId ORDER BY i.locationId")
+        Page<UUID> findIdsByInventoryCountId(@Param("countId") UUID countId, Pageable pageable);
+
+        @Query("SELECT i FROM InventoryCountItem i LEFT JOIN FETCH i.location LEFT JOIN FETCH i.product LEFT JOIN FETCH i.lot WHERE i.id IN :ids")
+        List<InventoryCountItem> findByIdsWithDetails(@Param("ids") List<UUID> ids);
+    blocking: false
+    suggested_story: "4.5 ou enhancement de performance antes de MVP"
+
+  - id: REL-001
+    severity: medium
+    category: code
+    file: "src/main/java/com/odin/wms/service/InventoryService.java"
+    description: |
+      ObjectOptimisticLockingFailureException lançada em applyStockAdjustment() quando stockItemRepository.save()
+      falha por concorrência. A story documenta no Risks "retry em ObjectOptimisticLockingFailureException
+      → HTTP 409", mas o service propaga a exceção sem capturá-la. Sem um @ExceptionHandler para
+      ObjectOptimisticLockingFailureException mapeando para HTTP 409, o comportamento em produção
+      será HTTP 500. O teste unitário approve_withOptimisticLock_throwsException verifica que a
+      exceção é propagada, mas não que resulta em 409. O mapeamento HTTP correto está ausente.
+    recommendation: |
+      Adicionar ao GlobalExceptionHandler (ou equivalente):
+        @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+        @ResponseStatus(HttpStatus.CONFLICT)
+        public ErrorResponse handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+            return new ErrorResponse("CONCURRENT_MODIFICATION",
+                "Conflito de concorrência. Tente novamente.", HttpStatus.CONFLICT.value());
+        }
+      E adicionar teste de integração que simule conflito → 409.
+    blocking: false
+    suggested_story: "4.5 ou GlobalExceptionHandler enhancement"
+
+  - id: MNT-001
+    severity: low
+    category: code
+    file: "src/main/java/com/odin/wms/service/InventoryService.java"
+    description: |
+      stockBalanceService.evictAll() no approveAdjustments() evita todo o cache "stockBalance"
+      independente de tenant ou locationId afetado. Em ambiente multi-tenant com muitos tenants
+      ativos, um inventário de um tenant invalida saldos cacheados de todos os outros tenants,
+      aumentando a pressão de recarga do cache. Documentado como trade-off aceitável em @po OBS-3,
+      mas gera latência desnecessária em cenários multi-tenant de alta concorrência.
+    recommendation: |
+      Evict por locationId afetado usando cacheManager.getCache("stockBalance").evict(key)
+      dentro do loop de approveAdjustments — scoped por tenant+location. Pode ser endereçado
+      junto com PERF-001 em refatoração de approveAdjustments para batching.
+    blocking: false
+    suggested_story: "Enhancement de cache eviction — Story 4.5 ou 5.x"
+
+  - id: TEST-001
+    severity: low
+    category: tests
+    file: "src/test/java/com/odin/wms/inventory/InventoryControllerIntegrationTest.java"
+    description: |
+      reconcile_asSupervisor_returns200WithSummary manipula o DB diretamente via
+      inventoryCountItemRepository.save() para forçar o estado do item (countedQty, status=COUNTED)
+      em vez de chamar o endpoint PATCH /count/{id}/items/{itemId}. Isso reduz a fidelidade do teste
+      para o fluxo submitCount→reconcile e mascara eventuais regressões no endpoint de submissão.
+      O comentário "Force update in DB since MockMvc doesn't chain JPA state properly" sugere uma
+      limitação de @Transactional no teste, mas o padrão @Rollback(false) ou @Commit resolveria isso.
+    recommendation: |
+      Refatorar para usar o endpoint PATCH diretamente com @Transactional(propagation=REQUIRES_NEW)
+      ou garantir que o item seja submetido via API e commitado antes do reconcile. Alternativa:
+      adicionar @Commit ao teste ou usar @Transactional(propagation=NOT_SUPPORTED) para persistência
+      real no Testcontainers.
+    blocking: false
+    suggested_story: "Enhancement de cobertura de testes"
+
+# ─── Quality Checks Summary ───────────────────────────────────────────────────
+quality_checks:
+  code_review:
+    status: PASS
+    notes: |
+      InventoryService bem estruturado: separação clara por AC, @Transactional correto,
+      @Transactional(readOnly=true) em getCountItems. State machine validada em todos os métodos.
+      calculateDivergencePct() trata expected=0 (sem divisão por zero). applyStockAdjustment()
+      usa lotId para distinção entre itens com/sem lote — cobertura correta dos dois path.
+      extractOperatorId() fallback para SYSTEM_OPERATOR_ID — degradação graciosa.
+      CYCLIC requer zoneId validado no service (não apenas no controller). delta=0 → sem StockMovement
+      (OBS-2 de @po implementado). InventoryController mínimo e correto, @PreAuthorize em todos os endpoints.
+      V7 SQL: ADD CONSTRAINT correto antes de novo CREATE TABLE. Índices criados para os 3 padrões de
+      acesso principais. CONSTRAINT chk_cyclic_zone com lógica de implicação correta.
+      Entidades: @SuperBuilder @NoArgsConstructor — padrão estabelecido. Lazy associations com
+      insertable=false, updatable=false — mapeamento correto de dual column.
+
+  unit_tests:
+    status: PASS
+    notes: |
+      8 cenários cobrindo os paths críticos: FULL vs CYCLIC routing, threshold logic (3%≤5% vs 15%>5%),
+      approve com StockMovement verification (ArgumentCaptor), evictAll(), indexMovementAsync(),
+      ObjectOptimisticLockingFailureException propagation, secondCount average recalc.
+      TenantContextHolder.setTenantId() + .clear() no BeforeEach/AfterEach — isolamento de estado.
+      SecurityContextHolder.clearContext() — sem estado de segurança entre testes.
+      Reflexão via setUUID() padronizada (BaseEntity) — padrão correto estabelecido em Story 4.2.
+
+  acceptance_criteria:
+    status: PASS
+    notes: |
+      Todos os 11 ACs verificados. CONCERN-1 de Story 4.2 (submitCount_withNonWmsRole_returns403)
+      explicitamente endereçado e testado em InventoryControllerIntegrationTest com ROLE_FINANCE → 403.
+      Isolamento multi-tenant via findByIdAndTenantId em todas as operações críticas. ✅
+
+  no_regressions:
+    status: PASS
+    notes: |
+      ./mvnw verify → 236 testes, 0 falhas, JaCoCo ≥ 80%. Inclui todos os testes das Stories
+      1.1, 1.2, 2.x, 3.1–3.3, 4.1, 4.2. MovementType.INVENTORY_ADJUSTMENT adicionado sem quebrar
+      testes existentes que usam o enum. StockItemRepository.findAllByTenantIdAndZoneId() adicionado
+      sem alterar métodos existentes. Nenhuma regressão detectada.
+
+  performance:
+    status: CONCERNS
+    notes: |
+      JOIN FETCH + Pageable (PERF-001) é risco latente para armazéns grandes.
+      approveAdjustments() em loop single-item save (sem batch) — aceitável para volumes MVP.
+      evictAll() broad eviction (MNT-001) — aceitável como trade-off documentado por @po.
+      Para volumes atuais de teste (< 100 itens), não há impacto observável.
+
+  security:
+    status: PASS
+    notes: |
+      Multi-tenant isolation: getCount(countId, tenantId) valida tenant em todos os métodos.
+      @PreAuthorize em todos os 8 endpoints com roles corretas conforme AC9. RBAC testado para
+      403 (WMS_OPERATOR em create, ROLE_FINANCE em submitCount) e 401 (sem token).
+      No SQL injection (JPA + Spring Data). @Valid em todos os request bodies.
+      extractOperatorId() não expõe informações sensíveis em fallback.
+
+  documentation:
+    status: PASS
+    notes: |
+      Javadoc em InventoryService e InventoryController referencia os ACs correspondentes.
+      Story atualizada com File List completo, Change Log e todos os checkboxes [x].
+      Dev Notes detalha padrões de StockMovement, cache eviction e geração de contagem.
+      Tech Debt de Story 4.2 (CONCERN-1) formalmente fechado nesta story.
+
+# ─── Non-Functional Requirements ─────────────────────────────────────────────
+nfr_assessment:
+  performance:
+    status: CONCERNS
+    notes: "JOIN FETCH + Pageable pode causar paginação in-memory em armazéns grandes (PERF-001)."
+
+  security:
+    status: PASS
+    notes: "Isolamento multi-tenant completo. RBAC declarativo correto. Input validation presente."
+
+  reliability:
+    status: CONCERNS
+    notes: "ObjectOptimisticLockingFailureException sem handler HTTP 409 — resulta em 500 em produção (REL-001)."
+
+  observability:
+    status: PASS
+    notes: "log.debug() em createCount e approveAdjustments com countId, itemCount, tenantId."
+
+  maintainability:
+    status: PASS
+    notes: "Service bem estruturado, helpers private com responsabilidade única, enums internos às entidades."
+
+# ─── Risk Assessment ──────────────────────────────────────────────────────────
+risk_matrix:
+  - risk: "Paginação in-memory em inventários de armazéns grandes"
+    probability: medium
+    impact: medium
+    score: medium
+    mitigation: "PERF-001 — usar two-query pattern antes de MVP com armazéns reais"
+
+  - risk: "HTTP 500 em conflito de concorrência (deveria ser 409)"
+    probability: low
+    impact: medium
+    score: medium
+    mitigation: "REL-001 — adicionar @ExceptionHandler para ObjectOptimisticLockingFailureException"
+
+  - risk: "Cache eviction excessiva em multi-tenant"
+    probability: low
+    impact: low
+    score: low
+    mitigation: "MNT-001 — evict scoped por locationId em sprint futuro"
+
+  - risk: "Fidelidade reduzida do teste de reconciliação"
+    probability: low
+    impact: low
+    score: low
+    mitigation: "TEST-001 — refatorar para usar endpoint PATCH diretamente"
+
+# ─── Gate Decision ────────────────────────────────────────────────────────────
+gate_decision:
+  verdict: CONCERNS
+  rationale: |
+    Story 4.3 implementa um workflow de inventário físico completo e complexo com qualidade
+    técnica satisfatória. Todos os 11 ACs verificados. 8 testes unitários + 8 integração
+    passando. BUILD SUCCESS com JaCoCo ≥ 80% confirmado (236 testes, 0 falhas).
+
+    CONCERN-1 de Story 4.2 (submitCount_withNonWmsRole_returns403) explicitamente endereçado
+    e testado com ROLE_FINANCE → 403. ✅ Tech debt fechado formalmente.
+
+    Issues encontrados:
+    - 2 × MEDIUM (não bloqueantes): PERF-001 (JOIN FETCH + Pageable), REL-001 (optimistic lock → 500)
+    - 2 × LOW (não bloqueantes): MNT-001 (evictAll broad), TEST-001 (DB manipulation em teste)
+
+    Nenhum issue é bloqueante para merge. PERF-001 e REL-001 devem ser agendados para
+    sprint pré-MVP antes de produção com armazéns reais. A funcionalidade core está correta
+    e o risco de produção imediato é baixo dado o contexto de desenvolvimento.
+
+    Aprovado com concerns. Story pode prosseguir para merge do PR #5.
+
+  approved: true
+  proceed_to: "@devops (Gage) — merge PR #5 (feature/4.3-wms-inventario-fisico)"
+  tech_debt_created:
+    - PERF-001  # Two-query pattern para findByInventoryCountIdWithDetails — pré-MVP
+    - REL-001   # GlobalExceptionHandler para ObjectOptimisticLockingFailureException → 409
+    - MNT-001   # Cache eviction scoped por tenant+location
+    - TEST-001  # Refatorar reconcile integration test para usar API endpoint
+  tech_debt_closed:
+    - "CONCERN-1 de Story 4.2 — submitCount_withNonWmsRole_returns403 implementado e testado ✅"
