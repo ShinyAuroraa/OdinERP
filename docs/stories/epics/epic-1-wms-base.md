@@ -560,7 +560,7 @@ quality_gate_tools: [mobile_ux_review, inventory_accuracy_test, sync_conflict_re
 | Wave 4 | 4.4 Auditoria Imutável | @data-engineer | @dev | M | ✅ Done |
 | Wave 4 | 4.5 Transferências Internas | @dev | @architect | S | ✅ Done |
 | Wave 5 | 5.1 Picking (Outbound+CRM) | @dev | @architect | L | ✅ Done |
-| Wave 5 | 5.2 Packing (Embalagem) | @dev | @architect | M |
+| Wave 5 | 5.2 Packing (Embalagem) | @dev | @architect | M | ✅ Done |
 | Wave 5 | 5.3 Shipping (Expedição+Transportadora) | @dev | @architect | M |
 | Wave 6 | 6.1 Integração WMS↔MRP/MRP II | @dev | @architect | XL |
 | Wave 7 | 7.1 Relatórios Regulatórios | @dev | @pm | M |
@@ -607,7 +607,7 @@ lastUpdatedAt: "2026-02-23"
 wavesCompleted: [1, 2, 3, 4]
 wavesInProgress: [5]
 wavesNext: [6, 7, 8]
-storiesCompleted: 15
+storiesCompleted: 16
 storiesTotal: 23
 totalStories: 23
 totalWaves: 8
