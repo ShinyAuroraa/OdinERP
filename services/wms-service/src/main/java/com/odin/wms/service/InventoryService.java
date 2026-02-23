@@ -5,6 +5,7 @@ import com.odin.wms.domain.entity.*;
 import com.odin.wms.domain.entity.InventoryCount.CountType;
 import com.odin.wms.domain.entity.InventoryCount.InventoryCountStatus;
 import com.odin.wms.domain.entity.InventoryCountItem.ItemCountStatus;
+import com.odin.wms.domain.enums.AuditAction;
 import com.odin.wms.domain.enums.MovementType;
 import com.odin.wms.domain.enums.ReferenceType;
 import com.odin.wms.domain.repository.*;
@@ -14,6 +15,7 @@ import com.odin.wms.dto.request.SubmitCountRequest;
 import com.odin.wms.dto.response.*;
 import com.odin.wms.exception.BusinessException;
 import com.odin.wms.exception.ResourceNotFoundException;
+import com.odin.wms.infrastructure.elasticsearch.AuditLogIndexer;
 import com.odin.wms.infrastructure.elasticsearch.TraceabilityIndexer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +51,8 @@ public class InventoryService {
     private final StockMovementRepository stockMovementRepository;
     private final StockBalanceService stockBalanceService;
     private final TraceabilityIndexer traceabilityIndexer;
+    private final AuditLogRepository auditLogRepository;
+    private final AuditLogIndexer auditLogIndexer;
 
     // -------------------------------------------------------------------------
     // AC1 — criar sessão de inventário
@@ -337,6 +341,23 @@ public class InventoryService {
                 .build());
 
         traceabilityIndexer.indexMovementAsync(movement);
+
+        // AC5 — registrar auditoria do ajuste de inventário (AC4.4)
+        UUID actorId = operatorId != null ? operatorId : SYSTEM_OPERATOR_ID;
+        String newValue = String.format(
+                "{\"movementType\":\"INVENTORY_ADJUSTMENT\",\"quantity\":%d,\"inventoryCountId\":\"%s\"}",
+                movement.getQuantity(), count.getId());
+
+        AuditLog auditLog = auditLogRepository.save(AuditLog.builder()
+                .tenantId(tenantId)
+                .entityType("STOCK_ITEM")
+                .entityId(stockItem.getId())
+                .action(AuditAction.MOVEMENT)
+                .actorId(actorId)
+                .newValue(newValue)
+                .build());
+
+        auditLogIndexer.indexAuditLogAsync(auditLog);
     }
 
     private InventoryCountItem buildCountItem(UUID tenantId, UUID countId, StockItem si) {

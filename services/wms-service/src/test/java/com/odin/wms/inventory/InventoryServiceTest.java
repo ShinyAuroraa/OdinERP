@@ -12,6 +12,9 @@ import com.odin.wms.dto.request.SecondCountRequest;
 import com.odin.wms.dto.request.SubmitCountRequest;
 import com.odin.wms.dto.response.*;
 import com.odin.wms.exception.BusinessException;
+import com.odin.wms.domain.entity.AuditLog;
+import com.odin.wms.domain.enums.AuditAction;
+import com.odin.wms.infrastructure.elasticsearch.AuditLogIndexer;
 import com.odin.wms.infrastructure.elasticsearch.TraceabilityIndexer;
 import com.odin.wms.service.InventoryService;
 import com.odin.wms.service.StockBalanceService;
@@ -48,6 +51,8 @@ class InventoryServiceTest {
     @Mock private StockMovementRepository stockMovementRepository;
     @Mock private StockBalanceService stockBalanceService;
     @Mock private TraceabilityIndexer traceabilityIndexer;
+    @Mock private AuditLogRepository auditLogRepository;
+    @Mock private AuditLogIndexer auditLogIndexer;
 
     @InjectMocks
     private InventoryService inventoryService;
@@ -185,6 +190,7 @@ class InventoryServiceTest {
         when(stockItemRepository.findByTenantIdAndLocationIdAndProductIdAndLotIdIsNull(
                 TENANT_ID, LOCATION_ID, PRODUCT_ID)).thenReturn(Optional.of(stockItem));
         when(stockMovementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(auditLogRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(inventoryCountItemRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
         when(inventoryCountRepository.save(any())).thenReturn(count);
 
@@ -215,6 +221,7 @@ class InventoryServiceTest {
         when(stockItemRepository.findByTenantIdAndLocationIdAndProductIdAndLotIdIsNull(
                 TENANT_ID, LOCATION_ID, PRODUCT_ID)).thenReturn(Optional.of(stockItem));
         when(stockMovementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(auditLogRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(inventoryCountItemRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
         when(inventoryCountRepository.save(any())).thenReturn(count);
 
@@ -269,6 +276,42 @@ class InventoryServiceTest {
         assertThat(item.getAdjustedQty()).isEqualByComparingTo(BigDecimal.valueOf(82));
         // divergencePct = abs(82-100)/100 * 100 = 18%
         assertThat(item.getDivergencePct()).isEqualByComparingTo(new BigDecimal("18.0000"));
+    }
+
+    // -------------------------------------------------------------------------
+    // U9 — applyStockAdjustment_savesAuditLog (AC5 Story 4.4)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void approve_savesAuditLogWithMovementAction() {
+        InventoryCount count = buildCount(InventoryCountStatus.RECONCILED, 0);
+        InventoryCountItem item = buildItem(ItemCountStatus.AUTO_APPROVED,
+                BigDecimal.valueOf(100), BigDecimal.valueOf(90));
+        StockItem stockItem = buildStockItem(100);
+
+        when(inventoryCountRepository.findByIdAndTenantId(COUNT_ID, TENANT_ID))
+                .thenReturn(Optional.of(count));
+        when(inventoryCountItemRepository.findByInventoryCountIdAndStatusIn(eq(COUNT_ID), anyList()))
+                .thenReturn(List.of(item));
+        when(stockItemRepository.findByTenantIdAndLocationIdAndProductIdAndLotIdIsNull(
+                TENANT_ID, LOCATION_ID, PRODUCT_ID)).thenReturn(Optional.of(stockItem));
+        when(stockMovementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(auditLogRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(inventoryCountItemRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(inventoryCountRepository.save(any())).thenReturn(count);
+
+        inventoryService.approveAdjustments(COUNT_ID);
+
+        ArgumentCaptor<AuditLog> auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(auditCaptor.capture());
+
+        AuditLog captured = auditCaptor.getValue();
+        assertThat(captured.getAction()).isEqualTo(AuditAction.MOVEMENT);
+        assertThat(captured.getEntityType()).isEqualTo("STOCK_ITEM");
+        assertThat(captured.getTenantId()).isEqualTo(TENANT_ID);
+        assertThat(captured.getNewValue()).contains("INVENTORY_ADJUSTMENT");
+
+        verify(auditLogIndexer).indexAuditLogAsync(any(AuditLog.class));
     }
 
     // -------------------------------------------------------------------------

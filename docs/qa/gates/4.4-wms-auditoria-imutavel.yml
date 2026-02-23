@@ -1,0 +1,29 @@
+schema: 1
+story: '1.4.4'
+gate: CONCERNS
+status_reason: >
+  Implementação sólida com todos os 11 ACs cobertos, 255 testes passando e JaCoCo ≥ 80%.
+  Um desvio baixo em relação ao AC8: filename do export omite o tenantId conforme especificado.
+reviewer: Quinn
+updated: '2026-02-23T10:45:00Z'
+top_issues:
+  - id: 'REQ-001'
+    severity: low
+    finding: >
+      AC8 especifica filename="audit-log-{tenantId}-{date}.json" mas a implementação
+      gera "audit-log-{date}.json" (sem tenantId). Em ambiente multi-tenant, downloads
+      simultâneos de tenants diferentes teriam o mesmo nome de arquivo.
+    suggested_action: >
+      Injetar tenantId no filename: String.format("audit-log-%s-%s.json", tenantId, date)
+      em AuditController.exportAuditLog(). Fix trivial — 1 linha.
+waiver:
+  active: false
+
+# ── Review Summary ─────────────────────────────────────────────────────────────
+# Build:        255 testes | 0 falhas | 0 erros | JaCoCo ≥ 80% ✅
+# Migration V8: tenant_retention_config + trigger imutabilidade + índice ✅
+# Security:     @PreAuthorize("WMS_ADMIN") class-level + tenant isolation 403≠404 ✅
+# Indexer:      @Async + graceful degradation (sem propagação de exceção) ✅
+# InventoryService: auditLogRepository.save() + indexAuditLogAsync() em @Transactional ✅
+# RetentionConfig:  retentionDescription calculado corretamente ✅
+# Immutability:     trigger I9 (DataIntegrityViolationException) verificado ✅
