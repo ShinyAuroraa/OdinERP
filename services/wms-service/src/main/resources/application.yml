@@ -152,6 +152,12 @@ wms:
       picking-completed: ${WMS_KAFKA_TOPIC_PICKING_COMPLETED:wms.picking.completed}
       packing-completed: ${WMS_KAFKA_TOPIC_PACKING_COMPLETED:wms.packing.completed}
       shipping-completed: ${WMS_KAFKA_TOPIC_SHIPPING_COMPLETED:wms.shipping.completed}
+      # Story 6.1 — MRP Integration
+      mrp-production-order-released: ${WMS_KAFKA_TOPIC_MRP_RELEASED:mrp.production.order.released}
+      mrp-production-order-cancelled: ${WMS_KAFKA_TOPIC_MRP_CANCELLED:mrp.production.order.cancelled}
+      materials-delivered: ${WMS_KAFKA_TOPIC_MATERIALS_DELIVERED:wms.materials.delivered}
+      stock-shortage: ${WMS_KAFKA_TOPIC_STOCK_SHORTAGE:wms.stock.shortage}
+      finished-goods-received: ${WMS_KAFKA_TOPIC_FINISHED_GOODS_RECEIVED:wms.finished.goods.received}
 
 logging:
   level:

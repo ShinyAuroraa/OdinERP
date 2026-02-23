@@ -1,6 +1,8 @@
 package com.odin.wms.config;
 
 import com.odin.wms.messaging.event.CrmOrderConfirmedEvent;
+import com.odin.wms.messaging.event.MrpProductionOrderCancelledEvent;
+import com.odin.wms.messaging.event.MrpProductionOrderReleasedEvent;
 import com.odin.wms.messaging.event.PackingCompletedEvent;
 import com.odin.wms.messaging.event.PickingCompletedEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -12,8 +14,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -136,5 +140,65 @@ public class KafkaConfig {
                     exception.getMessage(), message.getPayload(), exception);
             return null;
         };
+    }
+
+    // -------------------------------------------------------------------------
+    // MRP consumer (Story 6.1) — consome mrp.production.order.released
+    // -------------------------------------------------------------------------
+
+    @Bean
+    public ConsumerFactory<String, MrpProductionOrderReleasedEvent>
+    mrpReleasedConsumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "wms-mrp-consumer");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        JsonDeserializer<MrpProductionOrderReleasedEvent> deserializer =
+                new JsonDeserializer<>(MrpProductionOrderReleasedEvent.class, false);
+        deserializer.addTrustedPackages("com.odin.wms.messaging.event");
+
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, MrpProductionOrderReleasedEvent>
+    mrpReleasedKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, MrpProductionOrderReleasedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(mrpReleasedConsumerFactory());
+        factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(1000L, 3L)));
+        return factory;
+    }
+
+    // -------------------------------------------------------------------------
+    // MRP consumer (Story 6.1) — consome mrp.production.order.cancelled
+    // -------------------------------------------------------------------------
+
+    @Bean
+    public ConsumerFactory<String, MrpProductionOrderCancelledEvent>
+    mrpCancelledConsumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "wms-mrp-consumer");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        JsonDeserializer<MrpProductionOrderCancelledEvent> deserializer =
+                new JsonDeserializer<>(MrpProductionOrderCancelledEvent.class, false);
+        deserializer.addTrustedPackages("com.odin.wms.messaging.event");
+
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, MrpProductionOrderCancelledEvent>
+    mrpCancelledKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, MrpProductionOrderCancelledEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(mrpCancelledConsumerFactory());
+        factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(1000L, 3L)));
+        return factory;
     }
 }
