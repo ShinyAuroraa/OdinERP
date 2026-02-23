@@ -11,5 +11,6 @@ public enum MovementType {
     INVENTORY,
     RETURN,
     QUARANTINE_IN,
-    QUARANTINE_OUT
+    QUARANTINE_OUT,
+    INVENTORY_ADJUSTMENT
 }
