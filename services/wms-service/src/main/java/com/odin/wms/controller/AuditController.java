@@ -70,7 +70,8 @@ public class AuditController {
         List<AuditLogExportResponse> data = auditService.exportAuditLog(from, to);
 
         String date = LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.BASIC_ISO_DATE);
-        String filename = String.format("audit-log-%s.json", date);
+        UUID tenantId = com.odin.wms.config.security.TenantContextHolder.getTenantId();
+        String filename = String.format("audit-log-%s-%s.json", tenantId, date);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
