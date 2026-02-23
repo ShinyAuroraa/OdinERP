@@ -191,4 +191,31 @@ public interface StockItemRepository extends JpaRepository<StockItem, UUID> {
     List<StockItem> findAvailableByTenantIdAndLotIdIn(
             @Param("tenantId") UUID tenantId,
             @Param("lotIds") List<UUID> lotIds);
+
+    // -------------------------------------------------------------------------
+    // Story 5.1 — Picking / FIFO-FEFO por warehouse
+    // -------------------------------------------------------------------------
+
+    /**
+     * Retorna StockItems disponíveis de um produto num warehouse específico.
+     * JOIN FETCH de localização + hierarquia + lot para FIFO/FEFO e S-shape.
+     * Ordenação (FIFO vs FEFO) é feita em Java após a query.
+     */
+    @Query("""
+            SELECT s FROM StockItem s
+            JOIN FETCH s.location l
+            JOIN FETCH l.shelf sh
+            JOIN FETCH sh.aisle ai
+            JOIN FETCH ai.zone z
+            JOIN FETCH z.warehouse w
+            LEFT JOIN FETCH s.lot lot
+            WHERE s.tenantId = :tenantId
+              AND s.product.id = :productId
+              AND w.id = :warehouseId
+              AND s.quantityAvailable > 0
+            """)
+    List<StockItem> findAvailableByTenantProductWarehouse(
+            @Param("tenantId") UUID tenantId,
+            @Param("productId") UUID productId,
+            @Param("warehouseId") UUID warehouseId);
 }

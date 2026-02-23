@@ -2,6 +2,7 @@ package com.odin.wms.domain.enums;
 
 public enum MovementType {
     INBOUND,
+    OUTBOUND,
     PUTAWAY,
     TRANSFER,
     PICKING,
