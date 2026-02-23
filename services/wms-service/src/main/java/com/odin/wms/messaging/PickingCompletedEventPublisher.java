@@ -26,6 +26,7 @@ public class PickingCompletedEventPublisher {
     public void publishPickingCompleted(PickingOrder order, List<PickingItem> items) {
         List<PickingCompletedEvent.PickingCompletedItem> eventItems = items.stream()
                 .map(item -> new PickingCompletedEvent.PickingCompletedItem(
+                        item.getId(),
                         item.getProductId(),
                         item.getLotId(),
                         item.getLocationId(),

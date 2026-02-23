@@ -11,5 +11,6 @@ public enum ReferenceType {
     PUTAWAY_TASK,
     QUARANTINE_TASK,
     INTERNAL_TRANSFER,
-    PICKING_ORDER
+    PICKING_ORDER,
+    PACKING_ORDER
 }

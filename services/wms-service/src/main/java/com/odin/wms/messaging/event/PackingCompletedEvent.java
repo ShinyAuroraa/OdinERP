@@ -1,26 +1,28 @@
 package com.odin.wms.messaging.event;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-public record PickingCompletedEvent(
+public record PackingCompletedEvent(
         String eventType,
         UUID tenantId,
+        UUID packingOrderId,
         UUID pickingOrderId,
         UUID crmOrderId,
-        String status,
         UUID warehouseId,
         UUID operatorId,
-        List<PickingCompletedItem> items,
+        String sscc,
+        BigDecimal weightKg,
+        String packageType,
+        String status,
+        List<PackingCompletedItem> items,
         Instant completedAt
 ) {
-    public record PickingCompletedItem(
-            UUID pickingItemId,
+    public record PackingCompletedItem(
             UUID productId,
             UUID lotId,
-            UUID locationId,
-            int quantityRequested,
-            int quantityPicked
+            int quantityPacked
     ) {}
 }

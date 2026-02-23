@@ -1,6 +1,7 @@
 package com.odin.wms.config;
 
 import com.odin.wms.messaging.event.CrmOrderConfirmedEvent;
+import com.odin.wms.messaging.event.PickingCompletedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -66,5 +67,33 @@ public class KafkaConfig {
                     exception.getMessage(), message.getPayload(), exception);
             return null;
         };
+    }
+
+    // -------------------------------------------------------------------------
+    // Packing consumer (Story 5.2) — consome wms.picking.completed
+    // -------------------------------------------------------------------------
+
+    @Bean
+    public ConsumerFactory<String, PickingCompletedEvent> packingOrderConsumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "wms-packing-consumer");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        JsonDeserializer<PickingCompletedEvent> deserializer =
+                new JsonDeserializer<>(PickingCompletedEvent.class, false);
+        deserializer.addTrustedPackages("com.odin.wms.messaging.event");
+
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, PickingCompletedEvent>
+    packingKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, PickingCompletedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(packingOrderConsumerFactory());
+        return factory;
     }
 }

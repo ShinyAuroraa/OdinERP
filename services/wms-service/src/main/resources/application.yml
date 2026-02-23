@@ -149,6 +149,8 @@ wms:
   kafka:
     topics:
       crm-orders-confirmed: ${WMS_KAFKA_TOPIC_CRM_ORDERS:crm.orders.confirmed}
+      picking-completed: ${WMS_KAFKA_TOPIC_PICKING_COMPLETED:wms.picking.completed}
+      packing-completed: ${WMS_KAFKA_TOPIC_PACKING_COMPLETED:wms.packing.completed}
 
 logging:
   level:
