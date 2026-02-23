@@ -16,4 +16,6 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, UUID> {
     boolean existsByTenantIdAndCode(UUID tenantId, String code);
 
     List<Warehouse> findByTenantId(UUID tenantId);
+
+    Optional<Warehouse> findByIdAndTenantId(UUID id, UUID tenantId);
 }

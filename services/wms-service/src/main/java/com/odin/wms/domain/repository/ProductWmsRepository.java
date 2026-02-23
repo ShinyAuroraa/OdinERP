@@ -27,4 +27,7 @@ public interface ProductWmsRepository extends JpaRepository<ProductWms, UUID> {
     List<ProductWms> findByTenantIdAndStorageType(UUID tenantId, StorageType storageType);
 
     List<ProductWms> findByTenantIdAndActive(UUID tenantId, Boolean active);
+
+    // Story 7.1 — Relatórios Regulatórios
+    List<ProductWms> findByTenantIdAndVigilanciaSanitaria(UUID tenantId, boolean vigilanciaSanitaria);
 }

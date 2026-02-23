@@ -139,6 +139,20 @@
             <version>3.5.2</version>
         </dependency>
 
+        <!-- Apache POI — exportação Excel (.xlsx) — Story 7.1 -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
+
+        <!-- OpenPDF — exportação PDF (LGPL) — Story 7.1 -->
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>1.3.43</version>
+        </dependency>
+
         <!-- Kafka -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>

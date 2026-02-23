@@ -39,3 +39,18 @@ target/
 
 # Spring Boot
 *.orig
+
+# Android
+*.apk
+*.aab
+*.ap_
+*.dex
+local.properties
+apps/wms-android/.gradle/
+apps/wms-android/app/build/
+apps/wms-android/build/
+apps/wms-android/captures/
+apps/wms-android/.externalNativeBuild/
+apps/wms-android/.cxx/
+apps/wms-android/app/release/
+!apps/wms-android/gradle/wrapper/gradle-wrapper.jar

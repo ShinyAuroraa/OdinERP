@@ -74,4 +74,9 @@ public class ProductWms extends BaseEntity {
     @Column(name = "active", nullable = false)
     @Builder.Default
     private Boolean active = true;
+
+    /** Story 7.1 — flag de controle pela ANVISA Vigilância Sanitária. */
+    @Column(name = "vigilancia_sanitaria", nullable = false)
+    @Builder.Default
+    private boolean vigilanciaSanitaria = false;
 }
