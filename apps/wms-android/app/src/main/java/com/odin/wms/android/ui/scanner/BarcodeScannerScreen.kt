@@ -98,6 +98,11 @@ fun BarcodeScannerScreen(
 private fun CameraPreviewContent(viewModel: ScannerViewModel) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val executor = remember { Executors.newSingleThreadExecutor() }
+    val analyzer = remember { BarcodeAnalyzer { code, format -> viewModel.onBarcodeDetected(code, format) } }
+
+    DisposableEffect(Unit) {
+        onDispose { analyzer.close() }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
@@ -111,9 +116,7 @@ private fun CameraPreviewContent(viewModel: ScannerViewModel) {
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
                         .also { analysis ->
-                            analysis.setAnalyzer(executor, BarcodeAnalyzer { code, format ->
-                                viewModel.onBarcodeDetected(code, format)
-                            })
+                            analysis.setAnalyzer(executor, analyzer)
                         }
                     cameraProvider.unbindAll()
                     cameraProvider.bindToLifecycle(

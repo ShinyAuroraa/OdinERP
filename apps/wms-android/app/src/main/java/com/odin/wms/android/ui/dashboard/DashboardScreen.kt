@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.odin.wms.android.domain.model.StockSummary
+import com.odin.wms.android.domain.model.User
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -65,6 +66,9 @@ fun DashboardScreen(
                         .testTag("dashboard_content"),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    item {
+                        UserHeaderCard(user = viewModel.currentUser)
+                    }
                     if (state.isOffline) {
                         item {
                             OfflineBanner(lastUpdated = state.stockSummary.lastUpdated)
@@ -112,6 +116,34 @@ fun DashboardScreen(
             }
         }
         PullToRefreshContainer(state = pullState, modifier = Modifier.align(Alignment.TopCenter))
+    }
+}
+
+@Composable
+fun UserHeaderCard(user: User?) {
+    if (user == null) return
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(user.username, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    user.roles.firstOrNull()?.name
+                        ?.replace("_", " ")
+                        ?.lowercase()
+                        ?.replaceFirstChar { it.uppercase() } ?: "Operador",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Text(
+                user.tenantId,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

@@ -10,7 +10,7 @@ import com.google.mlkit.vision.common.InputImage
 
 class BarcodeAnalyzer(
     private val onBarcodeDetected: (code: String, format: String) -> Unit
-) : ImageAnalysis.Analyzer {
+) : ImageAnalysis.Analyzer, AutoCloseable {
 
     private val scanner = BarcodeScanning.getClient(
         BarcodeScannerOptions.Builder()
@@ -44,6 +44,10 @@ class BarcodeAnalyzer(
             .addOnCompleteListener {
                 imageProxy.close()
             }
+    }
+
+    override fun close() {
+        scanner.close()
     }
 
     private fun formatName(format: Int): String = when (format) {

@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import com.odin.wms.android.common.ApiResult
 import com.odin.wms.android.domain.model.OperationType
 import com.odin.wms.android.domain.model.StockSummary
+import com.odin.wms.android.domain.repository.IAuthRepository
 import com.odin.wms.android.domain.repository.IStockRepository
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -18,6 +19,7 @@ class DashboardScreenTest {
     val composeTestRule = createComposeRule()
 
     private val mockStockRepository = mockk<IStockRepository>()
+    private val mockAuthRepository = mockk<IAuthRepository>(relaxed = true)
 
     private val testSummary = StockSummary(
         tenantId = "tenant-abc",
@@ -34,7 +36,7 @@ class DashboardScreenTest {
         coEvery { mockStockRepository.getPendingTaskCount(any()) } returns 0
 
         composeTestRule.setContent {
-            val viewModel = DashboardViewModel(mockStockRepository)
+            val viewModel = DashboardViewModel(mockStockRepository, mockAuthRepository)
             DashboardScreen(viewModel = viewModel)
         }
 
@@ -52,7 +54,7 @@ class DashboardScreenTest {
                 testSummary.copy(isOffline = true)
 
         composeTestRule.setContent {
-            val viewModel = DashboardViewModel(mockStockRepository)
+            val viewModel = DashboardViewModel(mockStockRepository, mockAuthRepository)
             DashboardScreen(viewModel = viewModel)
         }
 

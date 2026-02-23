@@ -3,6 +3,7 @@ package com.odin.wms.android.ui.dashboard
 import com.odin.wms.android.common.ApiResult
 import com.odin.wms.android.domain.model.OperationType
 import com.odin.wms.android.domain.model.StockSummary
+import com.odin.wms.android.domain.repository.IAuthRepository
 import com.odin.wms.android.domain.repository.IStockRepository
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test
 class DashboardViewModelTest {
 
     private val mockStockRepository = mockk<IStockRepository>()
+    private val mockAuthRepository = mockk<IAuthRepository>(relaxed = true)
     private lateinit var viewModel: DashboardViewModel
     private val testDispatcher = UnconfinedTestDispatcher()
 
@@ -53,7 +55,7 @@ class DashboardViewModelTest {
         coEvery { mockStockRepository.getStockSummary() } returns ApiResult.Success(serverSummary)
         coEvery { mockStockRepository.getPendingTaskCount(any()) } returns 0
 
-        viewModel = DashboardViewModel(mockStockRepository)
+        viewModel = DashboardViewModel(mockStockRepository, mockAuthRepository)
 
         val state = viewModel.uiState.value
         assertTrue(state is DashboardUiState.Success)
@@ -70,7 +72,7 @@ class DashboardViewModelTest {
         coEvery { mockStockRepository.getCachedStockSummary() } returns cachedSummary
         coEvery { mockStockRepository.getPendingTaskCount(any()) } returns 0
 
-        viewModel = DashboardViewModel(mockStockRepository)
+        viewModel = DashboardViewModel(mockStockRepository, mockAuthRepository)
 
         val state = viewModel.uiState.value
         assertTrue(state is DashboardUiState.Success)
@@ -85,7 +87,7 @@ class DashboardViewModelTest {
                 ApiResult.NetworkError("Sem conexão")
         coEvery { mockStockRepository.getCachedStockSummary() } returns null
 
-        viewModel = DashboardViewModel(mockStockRepository)
+        viewModel = DashboardViewModel(mockStockRepository, mockAuthRepository)
 
         assertTrue(viewModel.uiState.value is DashboardUiState.Error)
     }

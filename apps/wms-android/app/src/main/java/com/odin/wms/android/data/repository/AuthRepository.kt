@@ -13,13 +13,14 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.io.IOException
+import com.odin.wms.android.di.BaseClient
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AuthRepository @Inject constructor(
     private val tokenProvider: TokenProvider,
-    private val httpClient: OkHttpClient
+    @BaseClient private val httpClient: OkHttpClient
 ) : IAuthRepository {
 
     private val tokenUrl: String

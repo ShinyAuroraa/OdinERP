@@ -20,7 +20,9 @@ class AuthInterceptor @Inject constructor(
         }
         val response = chain.proceed(request)
 
-        // 401 after attaching token: caller (repository) handles re-login
+        // 401 after attaching token: caller (repository) handles re-login.
+        // TODO(C4): implement okhttp3.Authenticator for proactive token refresh on 401 —
+        //  Authenticator lets OkHttp automatically retry the request after refreshing credentials.
         return response
     }
 }
