@@ -22,6 +22,15 @@ public class PickingOrder extends BaseEntity {
     public enum PickingStatus { PENDING, IN_PROGRESS, COMPLETED, PARTIAL, CANCELLED }
     public enum PickingType   { SINGLE, WAVE, BATCH }
     public enum RoutingAlgorithm { S_SHAPE, Z_SHAPE, LARGEST_GAP }
+    public enum PickingOrderType { CUSTOMER_ORDER, PRODUCTION_ORDER }
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_type", nullable = false, length = 20)
+    @Builder.Default
+    private PickingOrderType orderType = PickingOrderType.CUSTOMER_ORDER;
+
+    @Column(name = "production_order_id")
+    private UUID productionOrderId;
 
     @Column(name = "crm_order_id")
     private UUID crmOrderId;
