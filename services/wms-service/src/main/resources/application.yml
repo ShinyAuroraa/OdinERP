@@ -61,7 +61,7 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "com.odin.wms.infrastructure.kafka.event"
+        spring.json.trusted.packages: "com.odin.wms.infrastructure.kafka.event,com.odin.wms.messaging.event"
         spring.json.use.type.headers: "false"
         spring.json.value.default.type: "com.odin.wms.infrastructure.kafka.event.PurchaseOrderConfirmedEvent"
     producer:
@@ -146,6 +146,12 @@ wms:
     company-prefix: ${WMS_GS1_COMPANY_PREFIX:0789123}
   traceability:
     max-movements: ${WMS_TRACEABILITY_MAX_MOVEMENTS:500}
+  kafka:
+    topics:
+      crm-orders-confirmed: ${WMS_KAFKA_TOPIC_CRM_ORDERS:crm.orders.confirmed}
+      picking-completed: ${WMS_KAFKA_TOPIC_PICKING_COMPLETED:wms.picking.completed}
+      packing-completed: ${WMS_KAFKA_TOPIC_PACKING_COMPLETED:wms.packing.completed}
+      shipping-completed: ${WMS_KAFKA_TOPIC_SHIPPING_COMPLETED:wms.shipping.completed}
 
 logging:
   level:
