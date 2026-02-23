@@ -1,0 +1,84 @@
+schema: 1
+story: '1.4'
+gate: CONCERNS
+status_reason: >
+  All 7 acceptance criteria are met. pnpm lint, pnpm type-check, and pnpm build
+  all pass without errors. Implementation is structurally sound with correct
+  Next.js 15 App Router patterns, Tailwind 4, shadcn/ui, ESLint flat config,
+  Zod env validation, and multi-stage Dockerfile. One medium security finding
+  (SEC-001) and three low maintainability findings documented — none blocking.
+reviewer: 'Quinn'
+updated: '2026-02-22T00:00:00Z'
+top_issues:
+  - id: 'SEC-001'
+    severity: medium
+    finding: >
+      lib/env.ts exposes server-only secrets (KEYCLOAK_CLIENT_SECRET,
+      NEXTAUTH_SECRET) without the 'server-only' package guard. Protection
+      currently relies solely on a comment. An accidental import from a
+      'use client' component or a client-side bundle entry would expose these
+      secrets to the browser at build time.
+    suggested_action: >
+      Add `import 'server-only'` as the first line of lib/env.ts in Story 1.5
+      (after next-auth is installed and env.ts has its first real consumer).
+      Install `server-only` package: `pnpm add server-only`. This is the
+      canonical Next.js pattern for module-level enforcement of server boundaries.
+      Not blocking for Story 1.4 because env.ts has no consumers yet and the
+      story scope is structural setup only.
+  - id: 'MNT-001'
+    severity: low
+    finding: >
+      Shell.tsx sidebar collapse toggle is `className="sr-only"` — visually
+      hidden from sighted users. No visible button in Topbar or Sidebar to
+      toggle collapse state. Sighted users cannot collapse the sidebar.
+    suggested_action: >
+      Move the toggle button to Topbar.tsx or add a visible hamburger icon
+      in a future story. The sr-only button satisfies keyboard/screen reader
+      accessibility, but sighted UX is incomplete. Acceptable for a foundation
+      story where layout polish is deferred.
+  - id: 'MNT-002'
+    severity: low
+    finding: >
+      Sidebar.tsx collapsed nav items render empty <Link> elements — `{!collapsed && item.label}`
+      produces an invisible, empty clickable area with no icon affordance when
+      collapsed (w-16). Collapsed state is structurally functional but unusable
+      as no visual content is shown.
+    suggested_action: >
+      Add Lucide React icons to navItems in a future story (e.g. Story 1.5 or
+      dedicated icon sprint). Show icon only when collapsed, show icon + label
+      when expanded. This is expected deferred work for a foundation story.
+  - id: 'MNT-003'
+    severity: low
+    finding: >
+      .npmrc (node-linker=hoisted, Windows-specific setting) is copied into the
+      Docker builder stage via `COPY . .`. While this does not break the current
+      build (pnpm install runs in deps stage only), it could cause confusion or
+      unintended behavior if pnpm install is ever added to the builder stage, or
+      when running builds in Linux CI without the .dockerignore excluding it.
+    suggested_action: >
+      Add `.npmrc` to .dockerignore to prevent the Windows-specific linker setting
+      from being copied into the Linux Docker image. Linux Docker builds use the
+      default pnpm linker (symlinks) which is correct for Linux environments.
+
+checks:
+  code_review: PASS
+  unit_tests: N/A
+  acceptance_criteria: PASS
+  no_regressions: PASS
+  performance: PASS
+  security: CONCERNS
+  documentation: PASS
+
+notes:
+  - 'AC1: Next.js 15.5.12 + React 19 + TypeScript. Folder structure: app/, components/{layout,ui,accounts,opportunities,orders,shared}/, lib/{api,hooks,stores,validations}/, types/. Correct.'
+  - 'AC2: Tailwind 4.2.0 + shadcn/ui New York/Neutral (CSS-based config, Tailwind 4 auto-detected). 7 components: Button, Card, Input, Label, Separator, Badge, Skeleton.'
+  - 'AC3: Shell.tsx (client, collapse state) + Sidebar.tsx (nav links, active state) + Topbar.tsx (breadcrumb). app/(dashboard)/layout.tsx imports Shell correctly.'
+  - 'AC4: app/loading.tsx (global skeleton) + app/not-found.tsx (404 + Button) + app/(dashboard)/dashboard/loading.tsx (dashboard skeleton).'
+  - 'AC5: ESLint flat config (tseslint.config) with recommendedTypeChecked scoped to ts/tsx files only + eslint-config-prettier. pnpm lint → 0 errors.'
+  - 'AC6: docker/Dockerfile multi-stage (deps/builder/runner, node:20-alpine, nextjs:1001 non-root). next.config.ts: output standalone. pnpm build → BUILD SUCCESS.'
+  - 'AC7: lib/env.ts with Zod schema (6 vars). .env.example documents all vars. .gitignore: .env* + !.env.example.'
+  - 'Dev deviations documented and accepted: Tailwind 4 (template default in 2026), Zod 4.3.6, route group fix (dashboard/page.tsx), ESLint scope fix, .npmrc node-linker=hoisted.'
+  - 'pnpm lint → 0 errors ✅ | pnpm type-check → 0 errors ✅ | pnpm build → BUILD SUCCESSFUL ✅'
+
+waiver:
+  active: false
