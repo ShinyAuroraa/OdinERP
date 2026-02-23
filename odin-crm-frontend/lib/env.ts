@@ -1,5 +1,4 @@
-// Import this module only from server-side entry points (layout.tsx, instrumentation.ts)
-// Do not import in individual Server Components to avoid re-parsing on every request
+import 'server-only';
 import { z } from 'zod';
 
 const envSchema = z.object({

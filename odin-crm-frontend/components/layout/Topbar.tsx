@@ -1,8 +1,15 @@
+'use client';
+
+import { useCurrentUser } from '@/lib/hooks/use-current-user';
+import { LogoutButton } from './LogoutButton';
+
 interface TopbarProps {
   breadcrumb?: string;
 }
 
 export function Topbar({ breadcrumb }: TopbarProps) {
+  const { name, isLoading } = useCurrentUser();
+
   return (
     <header className="flex items-center justify-between h-16 px-6 border-b bg-background">
       <div className="text-sm text-muted-foreground">
@@ -10,10 +17,10 @@ export function Topbar({ breadcrumb }: TopbarProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        {/* User avatar placeholder — implementado na Story 1.5 */}
-        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-          U
-        </div>
+        <span className="text-sm text-foreground">
+          {isLoading ? '...' : (name ?? 'Usuário')}
+        </span>
+        <LogoutButton />
       </div>
     </header>
   );

@@ -1,0 +1,83 @@
+schema: 1
+story: '1.5'
+gate: PASS
+status_reason: >
+  All 6 acceptance criteria are met. pnpm lint, pnpm type-check, and pnpm build
+  all pass. NextAuth v5 + Keycloak OIDC flow, Edge Runtime middleware, silent
+  refresh, SSO logout, SessionProvider, useCurrentUser hook, and pt-BR login page
+  are correctly implemented. Four low-severity observations documented — none blocking.
+reviewer: 'Quinn'
+updated: '2026-02-22T00:00:00Z'
+top_issues:
+  - id: 'SEC-001'
+    severity: low
+    finding: >
+      No rate limiting on NextAuth /api/auth/* endpoints. The middleware.ts
+      matcher explicitly excludes the /api path, leaving auth endpoints exposed
+      to unrestricted request volume. In local dev this is acceptable, but a
+      brute-force or token-stuffing attack against /api/auth/callback/keycloak
+      would succeed without server-side throttling.
+    suggested_action: >
+      Before production: add rate limiting middleware or configure Keycloak
+      realm-level brute-force protection (Account Lockout policy). Alternatively,
+      add /api/auth/* to the middleware matcher with a rate-limit check. Defer
+      to a dedicated security hardening story.
+  - id: 'MNT-001'
+    severity: low
+    finding: >
+      app/layout.tsx sets lang="en" on the <html> element but the entire
+      application UI is in pt-BR (login page, topbar, error messages). Incorrect
+      lang attribute affects screen reader pronunciation, browser spell-check
+      language, and SEO language signals.
+    suggested_action: >
+      Change <html lang="en"> to <html lang="pt-BR"> in app/layout.tsx. Low
+      effort, high accessibility correctness value. Can be fixed in any story
+      or alongside the next UI work.
+  - id: 'MNT-002'
+    severity: low
+    finding: >
+      useCurrentUser() exposes hasError: true when the JWT refresh token fails
+      (RefreshAccessTokenError) but no component currently reacts to this flag.
+      An authenticated user with an expired refresh token will remain on /dashboard
+      seeing "..." or "Usuário" in the Topbar without being redirected to /login.
+      The middleware does not re-check session error state on subsequent navigations.
+    suggested_action: >
+      Add an effect in Topbar.tsx (or a dedicated AuthGuard client component)
+      that calls signOut() when hasError is true. Example:
+      useEffect(() => { if (hasError) { void signOut({ callbackUrl: '/login' }); } }, [hasError]);
+      This closes the gap between session error propagation and user redirect.
+  - id: 'TEST-001'
+    severity: low
+    finding: >
+      useCurrentUser() hook has no unit tests. The hook is central to auth UX
+      on every authenticated page (name display, role-gating readiness, error
+      detection). The story marks unit tests as optional, but the hook behavior
+      (name/email/roles/isLoading/hasError) is straightforward to test with a
+      mocked useSession.
+    suggested_action: >
+      Add lib/hooks/use-current-user.test.ts with Vitest + @testing-library/react
+      mocking useSession. Cover: (1) loading state, (2) authenticated with roles,
+      (3) error state (hasError: true). Defer to a dedicated testing sprint or
+      include in Story 1.6+ when test infrastructure is confirmed.
+
+checks:
+  code_review: PASS
+  unit_tests: N/A
+  acceptance_criteria: PASS
+  no_regressions: PASS
+  performance: PASS
+  security: PASS
+  documentation: PASS
+
+notes:
+  - 'AC1: lib/auth.ts — NextAuth 5.0.0-beta.30 + Keycloak provider. Handlers exported via app/api/auth/[...nextauth]/route.ts. JWT callback: stores accessToken, refreshToken, expiresAt, roles (crm-* filtered from realm_access). Edge Runtime safe: no lib/env import.'
+  - 'AC2: middleware.ts — auth() wrapper. Redirects to /login when !isAuthenticated && isDashboard. Matcher: /((?!api|_next/static|_next/image|favicon.ico).*). Build output: ƒ Middleware 86.8 kB.'
+  - 'AC3: Providers.tsx (SessionProvider, use client). app/layout.tsx wraps children. use-current-user.ts: { name, email, roles, isLoading, hasError }. Topbar.tsx converted to use client.'
+  - 'AC4: LogoutButton.tsx — signOut({ callbackUrl: /login }). NextAuth v5 + Keycloak auto-discovers end_session_endpoint via OIDC well-known. Integrated in Topbar.tsx.'
+  - 'AC5: refreshAccessToken() POSTs to {KEYCLOAK_ISSUER}/protocol/openid-connect/token. JWT callback: Date.now() < expiresAt * 1000 check. Error returns { error: RefreshAccessTokenError }.'
+  - 'AC6: login/page.tsx Server Component. searchParams as Promise<{error?}> (Next.js 15). ERROR_MESSAGES map: OAuthSignin, OAuthCallback, OAuthCreateAccount, OAuthAccountNotLinked, AccessDenied, RefreshAccessTokenError, Default. shadcn Alert variant=destructive.'
+  - 'Carry-forward: lib/env.ts — import server-only as first line (SEC-001 fix from 1.4). .dockerignore — .npmrc added (MNT-003 fix from 1.4).'
+  - 'pnpm lint → 0 errors ✅ | pnpm type-check → 0 errors ✅ | pnpm build → BUILD SUCCESSFUL ✅'
+
+waiver:
+  active: false
