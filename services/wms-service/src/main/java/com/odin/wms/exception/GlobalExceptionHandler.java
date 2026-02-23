@@ -38,6 +38,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
+        log.warn("Invalid request argument: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setType(URI.create("https://odin.com/errors/bad-request"));
+        return problem;
+    }
+
     @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
     public ProblemDetail handleOptimisticLocking(org.springframework.orm.ObjectOptimisticLockingFailureException ex) {
         log.warn("Optimistic locking conflict: {}", ex.getMessage());
