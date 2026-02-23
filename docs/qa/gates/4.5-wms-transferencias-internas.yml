@@ -1,0 +1,48 @@
+storyId: STORY-WMS-4.5
+title: "Transferências Internas entre Posições"
+reviewer: "@qa (Quinn)"
+reviewDate: "2026-02-23"
+verdict: CONCERNS
+
+summary:
+  acsVerified: 11
+  acsTotal: 11
+  testsTotal: 275
+  testsNew: 20
+  jacocoMinimum: "80%"
+  jacocoResult: PASS
+
+issues:
+  - id: QA-4.5-001
+    severity: medium
+    category: security
+    status: tech-debt
+    description: |
+      lotRepository.findById(lotId) em InternalTransferService.createTransfer() não verifica
+      se o lote pertence ao tenant correto. Um operador pode referenciar um lotId de outro
+      tenant sem erro. Impacto no estoque é nulo (location+product usam tenant correto),
+      mas viola tenant isolation completo.
+    recommendation: |
+      Substituir por lotRepository.findByIdAndTenantId(request.lotId(), tenantId).
+      Adicionar método findByIdAndTenantId() em LotRepository se não existir.
+    targetStory: "backlog — a resolver em story futura de hardening"
+
+  - id: QA-4.5-002
+    severity: low
+    category: tests
+    status: tech-debt
+    description: |
+      Sem teste dedicado para cancelTransfer quando status já é CANCELLED.
+      A lógica existe no service (linha 208-210) mas sem cobertura explícita.
+    recommendation: |
+      Adicionar U-test: cancelTransfer_alreadyCancelled_throwsException.
+    targetStory: "backlog — próxima oportunidade de manutenção"
+
+qualityChecks:
+  codeReview: PASS
+  unitTests: PASS
+  acceptanceCriteria: PASS
+  regression: PASS
+  performance: PASS
+  security: CONCERNS
+  documentation: PASS

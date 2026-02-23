@@ -554,11 +554,11 @@ quality_gate_tools: [mobile_ux_review, inventory_accuracy_test, sync_conflict_re
 | Wave 3 | 3.1 Recebimento de Mercadorias (Inbound+SCM) | @dev | @architect | L | ✅ Done |
 | Wave 3 | 3.2 Putaway (Motor de Regras) | @dev | @architect | L | ✅ Done |
 | Wave 3 | 3.3 Controle de Qualidade & Quarentena | @dev | @architect | M | ✅ Done |
-| Wave 4 | 4.1 Controle de Estoque em Tempo Real | @dev | @architect | L |
-| Wave 4 | 4.2 Rastreabilidade Lote/Série/Validade/GS1 | @dev | @architect | L |
-| Wave 4 | 4.3 Inventário Físico | @dev | @architect | M |
-| Wave 4 | 4.4 Auditoria Imutável | @data-engineer | @dev | M |
-| Wave 4 | 4.5 Transferências Internas | @dev | @architect | S |
+| Wave 4 | 4.1 Controle de Estoque em Tempo Real | @dev | @architect | L | ✅ Done |
+| Wave 4 | 4.2 Rastreabilidade Lote/Série/Validade/GS1 | @dev | @architect | L | ✅ Done |
+| Wave 4 | 4.3 Inventário Físico | @dev | @architect | M | ✅ Done |
+| Wave 4 | 4.4 Auditoria Imutável | @data-engineer | @dev | M | ✅ Done |
+| Wave 4 | 4.5 Transferências Internas | @dev | @architect | S | ✅ Done |
 | Wave 5 | 5.1 Picking (Outbound+CRM) | @dev | @architect | L |
 | Wave 5 | 5.2 Packing (Embalagem) | @dev | @architect | M |
 | Wave 5 | 5.3 Shipping (Expedição+Transportadora) | @dev | @architect | M |
@@ -603,11 +603,11 @@ version: 1.1.0
 createdBy: "@pm (Morgan)"
 createdAt: "2026-02-21"
 lastUpdatedBy: "@po (Pax)"
-lastUpdatedAt: "2026-02-22"
-wavesCompleted: [1, 2, 3]
+lastUpdatedAt: "2026-02-23"
+wavesCompleted: [1, 2, 3, 4]
 wavesInProgress: []
-wavesNext: [4]
-storiesCompleted: 9
+wavesNext: [5]
+storiesCompleted: 14
 storiesTotal: 23
 totalStories: 23
 totalWaves: 8
