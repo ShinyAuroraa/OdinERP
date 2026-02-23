@@ -12,5 +12,6 @@ public enum ReferenceType {
     QUARANTINE_TASK,
     INTERNAL_TRANSFER,
     PICKING_ORDER,
-    PACKING_ORDER
+    PACKING_ORDER,
+    SHIPPING_ORDER
 }

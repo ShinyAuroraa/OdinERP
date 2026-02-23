@@ -1,6 +1,7 @@
 package com.odin.wms.config;
 
 import com.odin.wms.messaging.event.CrmOrderConfirmedEvent;
+import com.odin.wms.messaging.event.PackingCompletedEvent;
 import com.odin.wms.messaging.event.PickingCompletedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -95,5 +96,45 @@ public class KafkaConfig {
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(packingOrderConsumerFactory());
         return factory;
+    }
+
+    // -------------------------------------------------------------------------
+    // Shipping consumer (Story 5.3) — consome wms.packing.completed
+    // -------------------------------------------------------------------------
+
+    @Bean
+    public ConsumerFactory<String, PackingCompletedEvent> shippingOrderConsumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "wms-shipping-consumer");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        JsonDeserializer<PackingCompletedEvent> deserializer =
+                new JsonDeserializer<>(PackingCompletedEvent.class, false);
+        deserializer.addTrustedPackages("com.odin.wms.messaging.event");
+
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, PackingCompletedEvent>
+    shippingKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, PackingCompletedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(shippingOrderConsumerFactory());
+        return factory;
+    }
+
+    /**
+     * Error handler para o consumer de eventos de shipping.
+     */
+    @Bean
+    public KafkaListenerErrorHandler shippingKafkaErrorHandler() {
+        return (message, exception) -> {
+            log.error("Falha ao processar PackingCompleted (shipping consumer): {} — payload: {}",
+                    exception.getMessage(), message.getPayload(), exception);
+            return null;
+        };
     }
 }
