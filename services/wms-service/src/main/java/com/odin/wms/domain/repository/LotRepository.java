@@ -42,6 +42,11 @@ public interface LotRepository extends JpaRepository<Lot, UUID> {
      */
     Optional<Lot> findByTenantIdAndLotNumber(UUID tenantId, String lotNumber);
 
+    // Story 7.1 — Relatórios Regulatórios
+    Optional<Lot> findByIdAndTenantId(UUID id, UUID tenantId);
+
+    List<Lot> findByTenantIdAndProductId(UUID tenantId, UUID productId);
+
     /**
      * FEFO com filtro opcional por data de expiração.
      * Retorna lotes ativos (active=true) ordenados por expiryDate ASC NULLS LAST.

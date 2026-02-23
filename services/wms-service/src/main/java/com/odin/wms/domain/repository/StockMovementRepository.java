@@ -28,6 +28,66 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, UU
     Optional<StockMovement> findByTenantIdAndReferenceId(UUID tenantId, UUID referenceId);
 
     // -------------------------------------------------------------------------
+    // Story 7.1 — Relatórios Regulatórios
+    // -------------------------------------------------------------------------
+
+    /**
+     * Busca movimentos de um warehouse no período (join com hierarquia de localização).
+     * Inclui movimentos onde a localização de origem OU destino pertence ao warehouse.
+     */
+    @Query("""
+            SELECT m FROM StockMovement m
+            JOIN FETCH m.product p
+            LEFT JOIN FETCH m.lot
+            LEFT JOIN FETCH m.sourceLocation sl
+            LEFT JOIN FETCH m.destinationLocation dl
+            WHERE m.tenantId = :tenantId
+              AND m.createdAt BETWEEN :from AND :to
+              AND (
+                (sl IS NOT NULL AND sl.shelf.aisle.zone.warehouse.id = :warehouseId)
+                OR (dl IS NOT NULL AND dl.shelf.aisle.zone.warehouse.id = :warehouseId)
+              )
+            ORDER BY m.createdAt ASC
+            """)
+    List<StockMovement> findByTenantIdAndWarehouseIdAndPeriod(
+            @Param("tenantId") UUID tenantId,
+            @Param("warehouseId") UUID warehouseId,
+            @Param("from") Instant from,
+            @Param("to") Instant to);
+
+    /**
+     * Busca movimentos com filtros opcionais para o relatório de Movimentações.
+     */
+    @Query("""
+            SELECT m FROM StockMovement m
+            JOIN FETCH m.product p
+            LEFT JOIN FETCH m.lot
+            LEFT JOIN FETCH m.sourceLocation sl
+            LEFT JOIN FETCH m.destinationLocation dl
+            WHERE m.tenantId = :tenantId
+              AND m.createdAt BETWEEN :from AND :to
+              AND (:productId IS NULL OR p.id = :productId)
+              AND (:movementType IS NULL OR m.type = :movementType)
+              AND (:locationId IS NULL OR
+                   (sl IS NOT NULL AND sl.id = :locationId) OR
+                   (dl IS NOT NULL AND dl.id = :locationId))
+              AND (
+                (sl IS NOT NULL AND sl.shelf.aisle.zone.warehouse.id = :warehouseId)
+                OR (dl IS NOT NULL AND dl.shelf.aisle.zone.warehouse.id = :warehouseId)
+              )
+            ORDER BY m.createdAt DESC
+            """)
+    Page<StockMovement> findMovimentacoes(
+            @Param("tenantId") UUID tenantId,
+            @Param("warehouseId") UUID warehouseId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("productId") UUID productId,
+            @Param("movementType") MovementType movementType,
+            @Param("locationId") UUID locationId,
+            Pageable pageable);
+
+    // -------------------------------------------------------------------------
     // Story 4.2 — Rastreabilidade
     // -------------------------------------------------------------------------
 
