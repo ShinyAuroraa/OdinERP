@@ -1,0 +1,109 @@
+engine_state:
+  workflow_id: story-development-cycle
+  workflow_name: Story Development Cycle
+  instance_id: story-development-cycle-engine-20260223b
+  target_context: core
+  squad_name: null
+  mode: engine
+  started_at: "2026-02-23T15:00:00.000Z"
+  updated_at: "2026-02-23T19:30:00.000Z"
+  status: completed
+  current_step_index: 4
+  current_phase: Done
+  last_completed_step: qa_gate
+  action_steps_completed: 4
+  action_steps_total: 4
+
+  elicitation_responses:
+    workflow:
+      story: "Nova story (Wave 8)"
+      start_phase: "Fase 1 — Create (@sm)"
+      next_story: "8.3 — App Android: Picking Guiado & Expedição"
+
+  step_outputs:
+    create:
+      story_file: "docs/stories/8.3.wms-android-picking.story.md"
+      story_id: "STORY-WMS-8.3"
+      story_title: "App Android WMS: Picking Guiado & Expedição"
+      story_status: "Draft"
+    validate:
+      validation_report: "GO"
+      score: "10/10"
+      story_status: "Ready"
+      checks_passed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+      checks_failed: []
+      critical_issues: []
+    implement_story:
+      story_status: "Ready for Review"
+      files_created: 47
+      files_modified: 4
+      unit_tests: 13
+      instrumented_tests: 6
+      total_tests: 19
+      commit: "dca48c5"
+      key_decisions:
+        - "IPickingRepository usa primitivos (não DTO) — Clean Architecture enforced"
+        - "FEFO query: ORDER BY CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END ASC, expiry_date ASC"
+        - "PickingSyncWorker: NOTIFICATION_ID = AtomicInteger(2000) — fix QA-8.2-004"
+        - "PickingRepository.loadTasksFromCache() retorna dados reais Room — fix QA-8.2-003"
+    qa_gate:
+      story_status: "Ready for Review"
+      gate_decision: "CONCERNS"
+      gate_file: "docs/qa/gates/8.3-wms-android-picking.yml"
+      issues_count: 2
+      critical_issues: []
+      high_issues: []
+      medium_issues:
+        - "QA-8.3-001: ViewModel descarta cached data (repository fix correto, gap no ViewModel)"
+      low_issues:
+        - "QA-8.3-002: double-retry mechanism (Result.retry() + manual retryCount)"
+      tech_debt:
+        - "QA-8.3-TD-001: ViewModel offline cache fix (Story 8.4)"
+        - "QA-8.3-TD-002: Worker double-retry semantics"
+        - "QA-8.3-TD-003: getTaskDetail/getOrderDetail offline fallback emite Error"
+        - "QA-8.3-TD-004: ProGuard keep rules para DTOs Gson-serializados"
+
+  step_results:
+    create:
+      status: completed
+      spawned_at: "2026-02-23T15:00:00.000Z"
+      completed_at: "2026-02-23T15:30:00.000Z"
+      retries: 0
+    validate:
+      status: completed
+      spawned_at: "2026-02-23T15:30:00.000Z"
+      completed_at: "2026-02-23T16:00:00.000Z"
+      retries: 0
+      notes: "GO 10/10. Story 8.3 validated. Status: Draft → Ready."
+    implement_story:
+      status: completed
+      spawned_at: "2026-02-23T16:00:00.000Z"
+      completed_at: "2026-02-23T18:30:00.000Z"
+      retries: 0
+      notes: "51 files changed (dca48c5). 47 criados + 4 modificados. 19 testes (13 unit + 6 instrumented). Story status → Ready for Review."
+    qa_gate:
+      status: completed
+      outputs:
+        gate_decision: "CONCERNS"
+        gate_file: "docs/qa/gates/8.3-wms-android-picking.yml"
+        story_status: "Ready for Review"
+        issues_count: 2
+        critical_issues: []
+        high_issues: []
+        medium_issues:
+          - "QA-8.3-001: ViewModel descarta cached data no offline path"
+        low_issues:
+          - "QA-8.3-002: double-retry em PickingSyncWorker"
+      artifacts:
+        - name: "8.3-wms-android-picking.yml"
+          path: "docs/qa/gates/8.3-wms-android-picking.yml"
+          status: created
+        - name: "8.3.wms-android-picking.story.md"
+          path: "docs/stories/8.3.wms-android-picking.story.md"
+          status: updated
+      spawned_at: "2026-02-23T18:30:00.000Z"
+      completed_at: "2026-02-23T19:30:00.000Z"
+      retries: 0
+      notes: "CONCERNS (Aprovado). 2 issues: 0 critical, 0 high, 1 medium, 1 low. QA-8.2-004 fix CONFIRMADO (AtomicInteger). QA-8.2-003 PARCIAL (repo ok, ViewModel gap). Gate file criado."
+
+  decisions: []
