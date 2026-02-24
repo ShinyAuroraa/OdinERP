@@ -3,7 +3,7 @@
 **ID:** EPIC-WMS-001
 **Módulo:** WMS — Warehouse Management System
 **Projeto:** Odin ERP
-**Status:** Ready
+**Status:** Complete ✅
 **Criado por:** @pm (Morgan)
 **Data:** 2026-02-21
 
@@ -561,13 +561,13 @@ quality_gate_tools: [mobile_ux_review, inventory_accuracy_test, sync_conflict_re
 | Wave 4 | 4.5 Transferências Internas | @dev | @architect | S | ✅ Done |
 | Wave 5 | 5.1 Picking (Outbound+CRM) | @dev | @architect | L | ✅ Done |
 | Wave 5 | 5.2 Packing (Embalagem) | @dev | @architect | M | ✅ Done |
-| Wave 5 | 5.3 Shipping (Expedição+Transportadora) | @dev | @architect | M |
-| Wave 6 | 6.1 Integração WMS↔MRP/MRP II | @dev | @architect | XL |
-| Wave 7 | 7.1 Relatórios Regulatórios | @dev | @pm | M |
-| Wave 8 | 8.1 Android: Fundação | @dev | @architect | L |
-| Wave 8 | 8.2 Android: Recebimento & Conferência | @dev | @architect | M |
-| Wave 8 | 8.3 Android: Picking Guiado & Expedição | @dev | @architect | M |
-| Wave 8 | 8.4 Android: Inventário & Transferências | @dev | @architect | M |
+| Wave 5 | 5.3 Shipping (Expedição+Transportadora) | @dev | @architect | M | ✅ Done |
+| Wave 6 | 6.1 Integração WMS↔MRP/MRP II | @dev | @architect | XL | ✅ Done |
+| Wave 7 | 7.1 Relatórios Regulatórios | @dev | @pm | M | ✅ Done |
+| Wave 8 | 8.1 Android: Fundação | @dev | @architect | L | ✅ Done |
+| Wave 8 | 8.2 Android: Recebimento & Conferência | @dev | @architect | M | ✅ Done |
+| Wave 8 | 8.3 Android: Picking Guiado & Expedição | @dev | @architect | M | ✅ Done |
+| Wave 8 | 8.4 Android: Inventário & Transferências | @dev | @architect | M | ✅ Done |
 
 **Total: 23 stories** · **8 waves**
 
@@ -595,19 +595,19 @@ epicId: EPIC-WMS-001
 epicNum: 1
 module: WMS
 project: Odin ERP
-status: InProgress
+status: Complete
 validatedBy: "@po (Pax)"
 validatedAt: "2026-02-21"
 validationScore: "8.3/10"
-version: 1.1.0
+version: 1.2.0
 createdBy: "@pm (Morgan)"
 createdAt: "2026-02-21"
 lastUpdatedBy: "@po (Pax)"
-lastUpdatedAt: "2026-02-23"
-wavesCompleted: [1, 2, 3, 4]
-wavesInProgress: [5]
-wavesNext: [6, 7, 8]
-storiesCompleted: 16
+lastUpdatedAt: "2026-02-24"
+wavesCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
+wavesInProgress: []
+wavesNext: []
+storiesCompleted: 23
 storiesTotal: 23
 totalStories: 23
 totalWaves: 8
