@@ -1,0 +1,32 @@
+storyId: STORY-FE-16.1
+storyTitle: "Dockerfile Multi-Stage + Docker Compose (wms-web)"
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+checks:
+  code_review:
+    status: PASS
+    notes: "Dockerfile multi-stage correto: deps → builder → runner. node:20-alpine. User não-root (nextjs:nodejs uid/gid 1001). Standalone output configurado. ARG para NEXT_PUBLIC_* vars em build-time."
+  acceptance_criteria:
+    status: PASS
+    notes: "AC1-6 atendidos: next.config.ts com output standalone, Dockerfile 3 stages, .dockerignore completo, docker-compose.yml com profiles dev/prod, build OK."
+  no_regressions:
+    status: PASS
+    notes: "169/169 testes passando. TypeCheck OK. output: standalone não quebra nenhum teste existente."
+  security:
+    status: PASS
+    notes: "User não-root (nextjs uid 1001). Nenhuma secret hardcoded. NEXT_PUBLIC_* via ARG (não via ENV direto). NEXT_TELEMETRY_DISABLED=1."
+  docker_best_practices:
+    status: PASS
+    notes: "Multi-stage elimina devDependencies da imagem final. .dockerignore exclui node_modules e .next. libc6-compat para Alpine. profiles: [dev] / [prod] isola serviços."
+  documentation:
+    status: PASS
+    notes: "Story 16.1 completa. docker-compose.yml autodocumentado com comentários. EPIC-FE-002 Wave 1 iniciada."
+
+issues: []
+
+summary: >
+  Story 16.1 implementada com sucesso. Dockerfile multi-stage (deps/builder/runner)
+  com node:20-alpine, user não-root, standalone output. docker-compose com profiles
+  dev (volume mount) e prod (imagem built). 169/169 testes passando. Build OK.

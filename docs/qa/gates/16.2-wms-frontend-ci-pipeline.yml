@@ -1,0 +1,29 @@
+storyId: STORY-FE-16.2
+storyTitle: "GitHub Actions CI Pipeline (lint + typecheck + test + build)"
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+checks:
+  code_review:
+    status: PASS
+    notes: "ci.yml bem estruturado: triggers com paths filter, working-directory correto, cache npm com cache-dependency-path, 5 steps sequenciais (install → lint → typecheck → test → build)."
+  acceptance_criteria:
+    status: PASS
+    notes: "AC1-6 atendidos: disparado em push + PR, paths filter apps/wms-web/** e workflow, Node.js 20 + cache, env vars de build configuradas, working-directory apps/wms-web, falha bloqueia."
+  security:
+    status: PASS
+    notes: "Nenhuma secret exposta no workflow. NEXT_PUBLIC_* usam valores de dev/placeholder. actions/checkout@v4 e actions/setup-node@v4 (versões pinadas)."
+  ci_cd_best_practices:
+    status: PASS
+    notes: "actions pinadas em @v4. Cache npm reduz tempo de install. NEXT_TELEMETRY_DISABLED=1 evita chamadas externas no build. paths filter evita runs desnecessários."
+  documentation:
+    status: PASS
+    notes: "Story 16.2 completa. Workflow autodocumentado. EPIC-FE-002 Wave 1 concluída."
+
+issues: []
+
+summary: >
+  Story 16.2 implementada com sucesso. CI pipeline GitHub Actions com 5 steps
+  (lint → typecheck → test → build). Cache npm configurado. paths filter para
+  evitar runs desnecessários. EPIC-FE-002 Wave 1 completa.

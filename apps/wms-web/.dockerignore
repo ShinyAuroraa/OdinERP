@@ -1,0 +1,41 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Next.js build output
+.next
+out
+
+# Environment files
+.env*.local
+.env.development
+.env.production
+
+# Development files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+coverage
+__tests__
+
+# Editor & OS
+.DS_Store
+*.swp
+.idea
+.vscode
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+README*
+
+# Config files not needed in container
+.eslintrc*
+.eslintignore
+vitest.config*
+playwright.config*
+tsconfig.tsbuildinfo

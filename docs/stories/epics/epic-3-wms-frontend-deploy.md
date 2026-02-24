@@ -9,11 +9,11 @@ createdBy: "@pm (Morgan)"
 createdAt: "2026-02-24"
 version: "1.0.0"
 storiesTotal: 5
-storiesCompleted: 0
+storiesCompleted: 2
 wavesTotal: 3
-wavesCompleted: []
+wavesCompleted: [1]
 wavesInProgress: []
-wavesNext: [1]
+wavesNext: [2]
 ---
 
 # Epic 3 — WMS Frontend Deploy: Docker + CI/CD + Kubernetes
@@ -41,7 +41,7 @@ Containerizar e fazer deploy do WMS Frontend (`wms-web`) em ambiente de produç�
 - **Autenticação:** Keycloak realm `odin`, PKCE flow — precisa de variáveis de ambiente em runtime
 - **Backend:** WMS Service rodando em K8s (`wms-service` deployment)
 - **Registry:** GitHub Container Registry (ghcr.io) ou Docker Hub
-- **Infraestrutura alvo:** Kubernetes cluster (mesmo cluster do wms-service)
+- **Infraestrutura alvo:** Kubernetes local (`kind` ou `minikube`) para desenvolvimento/testes; cluster remoto em produção
 - **CI/CD existente:** GitHub Actions com branch protection em `main`
 
 **Variáveis de ambiente necessárias (wms-web):**
@@ -60,8 +60,8 @@ NEXTAUTH_URL=https://wms.odin.internal
 
 | # | Story | Wave | Complexidade | Status |
 |---|-------|------|-------------|--------|
-| 16.1 | Dockerfile Multi-Stage + Docker Compose (dev + prod) | 1 | M | Pending |
-| 16.2 | GitHub Actions CI Pipeline (lint + typecheck + test + build + CodeRabbit) | 1 | M | Pending |
+| 16.1 | Dockerfile Multi-Stage + Docker Compose (dev + prod) | 1 | M | ✅ Done |
+| 16.2 | GitHub Actions CI Pipeline (lint + typecheck + test + build + CodeRabbit) | 1 | M | ✅ Done |
 | 16.3 | GitHub Actions CD Pipeline (Docker build + push ghcr.io + deploy K8s) | 2 | L | Pending |
 | 16.4 | Kubernetes Manifests (Deployment + Service + Ingress + ConfigMap + Secret) | 2 | M | Pending |
 | 16.5 | Health Endpoints + Observabilidade (Prometheus metrics + readiness/liveness) | 3 | S | Pending |

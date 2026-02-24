@@ -1,0 +1,40 @@
+services:
+  # ── WMS Web — Development (hot-reload via volume mount) ──────────────────────
+  wms-web-dev:
+    build:
+      context: apps/wms-web
+      target: deps
+    working_dir: /app
+    volumes:
+      - ./apps/wms-web:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - WMS_API_URL=${WMS_API_URL:-http://host.docker.internal:8080}
+      - NEXT_PUBLIC_KEYCLOAK_URL=${NEXT_PUBLIC_KEYCLOAK_URL:-http://localhost:8180}
+      - NEXT_PUBLIC_KEYCLOAK_REALM=${NEXT_PUBLIC_KEYCLOAK_REALM:-odin}
+      - NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=${NEXT_PUBLIC_KEYCLOAK_CLIENT_ID:-wms-web}
+      - NEXT_TELEMETRY_DISABLED=1
+    command: npm run dev
+    profiles: [dev]
+
+  # ── WMS Web — Production (standalone build) ──────────────────────────────────
+  wms-web:
+    build:
+      context: apps/wms-web
+      target: runner
+      args:
+        WMS_API_URL: ${WMS_API_URL:-http://wms-service:8080}
+        NEXT_PUBLIC_KEYCLOAK_URL: ${NEXT_PUBLIC_KEYCLOAK_URL:-http://localhost:8180}
+        NEXT_PUBLIC_KEYCLOAK_REALM: ${NEXT_PUBLIC_KEYCLOAK_REALM:-odin}
+        NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: ${NEXT_PUBLIC_KEYCLOAK_CLIENT_ID:-wms-web}
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    restart: unless-stopped
+    profiles: [prod]

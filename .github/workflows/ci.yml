@@ -1,0 +1,53 @@
+name: CI — WMS Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/wms-web/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/wms-web/**'
+      - '.github/workflows/ci.yml'
+
+jobs:
+  ci:
+    name: Lint · TypeCheck · Test · Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/wms-web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/wms-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: TypeCheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          WMS_API_URL: http://localhost:8080
+          NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8180
+          NEXT_PUBLIC_KEYCLOAK_REALM: odin
+          NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: wms-web
