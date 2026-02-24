@@ -1,0 +1,153 @@
+storyId: "1.7"
+storyTitle: "User Profile Management"
+verdict: CONCERNS
+reviewedAt: "2026-02-24"
+reviewer: "@qa"
+
+# ─────────────────────────────────────────────
+# QA 7-POINT CHECKLIST
+# ─────────────────────────────────────────────
+
+checks:
+  code_review:
+    status: PASS
+    notes: >
+      Backend clean and well-structured. KeycloakAdminRestClient uses thread-safe token cache
+      (volatile + synchronized). URL encoding applied to client credentials. method(HttpMethod.DELETE)
+      used correctly for DELETE with body. UserAdminService audit-before-action pattern correctly
+      implemented. UserAdminController extracts actor from JwtAuthenticationToken correctly.
+      Frontend Server Actions re-validate crm-admin role server-side (getAdminToken). lib/api/admin.ts
+      uses import 'server-only' guard. No SQL injection risk (Flyway, no dynamic queries).
+
+  unit_tests:
+    status: PASS
+    notes: >
+      25 tests total (was stated as 15 — difference is SchemaIntegrationTest with Testcontainers
+      counts 6 integration tests). All 25 pass, 0 failures.
+      Coverage by class:
+        DomainSmokeTest (2), SchemaIntegrationTest (6), UserAdminServiceTest (5),
+        CrmApplicationSmokeTest (2), UserAdminControllerTest (6), SecurityMvcTest (4).
+      UserAdminServiceTest validates: listUsers mapping, updateStatus audit+keycloak for
+      enable/disable, updateRoles add+remove, updateRoles no-op skips audit.
+      UserAdminControllerTest validates: 401/403/200/204 for all 3 endpoints (AC5 ✓).
+
+  acceptance_criteria:
+    status: CONCERNS
+    notes: >
+      AC1 ✅ — /admin/users page lists users with nome, email, cargo, roles, status (ativo/inativo).
+      AC2 ⚠️  PARTIAL — Backend supports all 5 roles. BUT UserManagementClient.tsx ALL_ROLES constant
+               only contains ['crm-admin', 'crm-gerente', 'crm-vendedor']. Missing: crm-sac and
+               crm-financeiro. Admin cannot assign these roles via UI (backend is correct; fix is
+               trivial).
+      AC3 ✅ — Status toggle + AlertDialog confirmation before disabling. setUserEnabled(id, false)
+               is soft in Keycloak.
+      AC4 ✅ — All mutations go through Server Actions → backend REST API → Keycloak Admin service
+               account. Frontend never contacts Keycloak directly.
+      AC5 ✅ — @PreAuthorize("hasRole('crm-admin')") on controller class. Tests verify 401/403 for
+               unauthenticated/non-admin. middleware.ts protects /admin at edge.
+      AC6 ✅ — AuditLogEntity saved with entity_type=USER, entity_id (UUID), action
+               (USER_ENABLED/USER_DISABLED/ROLE_ASSIGNED/ROLE_REVOKED), actor_id, actor_email,
+               old_values (JSON), new_values (JSON), occurred_at=NOW(). Written BEFORE Keycloak call.
+
+  no_regressions:
+    status: PASS
+    notes: >
+      ./gradlew test → BUILD SUCCESSFUL (25 tests, 0 failures).
+      pnpm type-check + pnpm lint + pnpm build → all clean.
+      CrmApplicationSmokeTest correctly updated with @MockBean AuditLogJpaRepository.
+      SchemaIntegrationTest updated to assert latest Flyway version = "10".
+      Previously passing tests (SecurityMvcTest, DomainSmokeTest) continue to pass.
+
+  performance:
+    status: CONCERNS
+    notes: >
+      N+1 Keycloak API calls in listUsers(): 1 call for user list + N calls for roles (one per user).
+      With 100 users = 101 sequential HTTP calls. Documented in story scope as acceptable for
+      < 100 users. Acceptable for current scale but must be revisited (batch roles endpoint or
+      cache) before going beyond 50 users. NOT blocking for this story.
+
+  security:
+    status: PASS
+    notes: >
+      clientSecret never logged. Token cache expiry = expires_in - 60s (min 30s) prevents
+      expired-token usage. Server Actions validate crm-admin role before any mutation (double
+      authorization: frontend guard + server action re-check + backend @PreAuthorize).
+      lib/api/admin.ts uses import 'server-only' preventing accidental client-side usage.
+      keycloakId path variable passed to Keycloak Admin URL without validation — low risk
+      since only crm-admin accesses this and Keycloak Admin API rejects malformed UUIDs.
+
+  documentation:
+    status: PASS
+    notes: >
+      KeycloakAdminRestClient has comprehensive Javadoc with endpoint list. Story file updated with
+      actual file list and architectural deviation (UserAdminService in crm-infrastructure, not
+      crm-application) with justification. V10 migration comment explains deferred partitioning.
+
+# ─────────────────────────────────────────────
+# ISSUES
+# ─────────────────────────────────────────────
+
+issues:
+  - id: "1.7-QA-001"
+    severity: medium
+    category: requirements
+    description: >
+      ALL_ROLES in UserManagementClient.tsx only lists ['crm-admin', 'crm-gerente', 'crm-vendedor'].
+      AC2 requires all 5 roles: crm-vendedor, crm-gerente, crm-sac, crm-financeiro, crm-admin.
+      crm-sac and crm-financeiro cannot be assigned via the admin UI.
+    recommendation: >
+      Add 'crm-sac' and 'crm-financeiro' to ALL_ROLES constant in
+      odin-crm-frontend/components/admin/UserManagementClient.tsx (line 28).
+
+  - id: "1.7-QA-002"
+    severity: low
+    category: code
+    description: >
+      listUsers() uses Keycloak's createdTimestamp as lastLogin. Keycloak doesn't expose the actual
+      last login time in the GET /users list API (requires event store query). The field name
+      suggests login time but shows account creation time.
+    recommendation: >
+      Rename field to createdAt in UserAdminDto/Response OR leave lastLogin=null until Story 2.x
+      when event-based sync is implemented. At minimum, update frontend to display "Criado em"
+      label instead of "Último login".
+
+  - id: "1.7-QA-003"
+    severity: low
+    category: performance
+    description: >
+      N+1 Keycloak API pattern in listUsers(): one GET /users call + N GET .../role-mappings/realm
+      calls. Sequential HTTP, no parallelism. Acceptable for < 50 users but degrades linearly.
+    recommendation: >
+      Document 50-user soft limit in README/runbook. In a future story: use CompletableFuture or
+      virtual threads to parallelize role fetch calls, or cache realm roles for 60s.
+
+  - id: "1.7-QA-004"
+    severity: low
+    category: code
+    description: >
+      updateRoles() emits a single audit action ('ROLE_ASSIGNED' if any roles added, 'ROLE_REVOKED'
+      otherwise) even when both add and remove happen simultaneously. AC6 specifies ROLE_ASSIGNED
+      and ROLE_REVOKED as separate actions. The old/new values capture the full change, but the
+      single action string loses granularity when both add and remove occur in one call.
+    recommendation: >
+      Consider saving two audit entries when both toAdd and toRemove are non-empty, or use a
+      composite action like 'ROLE_UPDATED'. Low impact — old/new values preserve full audit trail.
+
+# ─────────────────────────────────────────────
+# FINAL VERDICT
+# ─────────────────────────────────────────────
+
+verdict_rationale: >
+  Core story functionality is solid: security, audit trail, Keycloak integration, and test coverage
+  are all high quality. The MEDIUM issue (1.7-QA-001) partially breaks AC2 but is a trivial 1-line
+  fix. The backend correctly supports all 5 roles; only the frontend UI is missing 2 of them.
+  No blocking security or architectural issues. Build is clean. CONCERNS verdict with mandatory
+  fix for 1.7-QA-001 before Story 1.7 can be marked Done.
+
+mandatory_fixes_before_done:
+  - "1.7-QA-001: FIXED — crm-sac and crm-financeiro added to ALL_ROLES in UserManagementClient.tsx (applied during QA gate)"
+
+recommended_for_future_stories:
+  - "1.7-QA-002: lastLogin field accuracy (Story 2.x event sync)"
+  - "1.7-QA-003: N+1 Keycloak calls performance (Story 2.x or dedicated perf story)"
+  - "1.7-QA-004: Audit action granularity (minor, low priority)"

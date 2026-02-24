@@ -25,7 +25,7 @@ import {
 import { updateUserRoles, updateUserStatus } from '@/app/(dashboard)/admin/users/actions';
 import type { UserAdminDto } from '@/lib/api/admin';
 
-const ALL_ROLES = ['crm-admin', 'crm-gerente', 'crm-vendedor'] as const;
+const ALL_ROLES = ['crm-admin', 'crm-gerente', 'crm-vendedor', 'crm-sac', 'crm-financeiro'] as const;
 
 interface Props {
   users: UserAdminDto[];
