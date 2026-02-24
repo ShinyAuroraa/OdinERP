@@ -63,6 +63,7 @@ jobs:
           KEYCLOAK_CLIENT_ID: odin-crm-frontend
           KEYCLOAK_CLIENT_SECRET: ci-placeholder
           KEYCLOAK_ISSUER: http://localhost:8180/realms/odin
+          NEXT_PUBLIC_API_URL: http://localhost:8080
 
   docker-push:
     name: Docker Build & Push to ECR
