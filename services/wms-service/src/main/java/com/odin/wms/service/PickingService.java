@@ -341,6 +341,9 @@ public class PickingService {
 
         int totalPicked = 0;
         boolean allPicked = true;
+        // C2 fix: coleta para saveAll() após o loop (evita N+1 de writes)
+        List<StockItem> stockItemsToSave = new ArrayList<>();
+        List<StockMovement> movementsToSave = new ArrayList<>();
 
         for (PickingItem item : items) {
             StockItem stockItem = findStockItemForReservation(
@@ -351,7 +354,7 @@ public class PickingService {
                     stockItem.getQuantityReserved() - item.getQuantityRequested());
 
             if (item.getQuantityPicked() > 0) {
-                // Criar StockMovement de OUTBOUND usando entidades já carregadas no stockItem
+                // Criar StockMovement de PICKING usando entidades já carregadas no stockItem
                 StockMovement movement = StockMovement.builder()
                         .tenantId(tenantId)
                         .type(MovementType.PICKING)
@@ -363,7 +366,7 @@ public class PickingService {
                         .referenceId(order.getId())
                         .operatorId(order.getOperatorId() != null ? order.getOperatorId() : actorId)
                         .build();
-                stockMovementRepository.save(movement);
+                movementsToSave.add(movement);
 
                 totalPicked += item.getQuantityPicked();
             }
@@ -380,8 +383,11 @@ public class PickingService {
                 allPicked = false;
             }
 
-            stockItemRepository.save(stockItem);
+            stockItemsToSave.add(stockItem);
         }
+        // C2 fix: batch persists (1 query cada ao invés de N)
+        stockItemRepository.saveAll(stockItemsToSave);
+        stockMovementRepository.saveAll(movementsToSave);
 
         order.setStatus(allPicked ? PickingStatus.COMPLETED : PickingStatus.PARTIAL);
         order.setCompletedAt(Instant.now());
@@ -438,6 +444,8 @@ public class PickingService {
 
         if (order.getStatus() == PickingStatus.IN_PROGRESS) {
             // Liberar reserva de PENDING, PARTIAL e PICKED (SKIPPED nunca reservou)
+            // C2 fix: coleta para saveAll() após o loop (evita N+1 de writes)
+            List<StockItem> stockItemsToRelease = new ArrayList<>();
             for (PickingItem item : items) {
                 if (item.getStatus() == PickingItemStatus.PENDING
                         || item.getStatus() == PickingItemStatus.PARTIAL
@@ -449,9 +457,10 @@ public class PickingService {
                             stockItem.getQuantityReserved() - item.getQuantityRequested());
                     stockItem.setQuantityAvailable(
                             stockItem.getQuantityAvailable() + item.getQuantityRequested());
-                    stockItemRepository.save(stockItem);
+                    stockItemsToRelease.add(stockItem);
                 }
             }
+            stockItemRepository.saveAll(stockItemsToRelease);
             stockBalanceService.evictAll();
         }
 
@@ -497,9 +506,15 @@ public class PickingService {
         } else {
             page = pickingOrderRepository.findByTenantId(tenantId, pageable);
         }
+        // C1 fix: batch load de todos os itens da página em 1 query (evita N+1)
+        List<UUID> orderIds = page.getContent().stream().map(PickingOrder::getId).toList();
+        Map<UUID, List<PickingItem>> itemsByOrder = pickingItemRepository
+                .findByPickingOrderIdInOrderByPickingOrderIdAscSortOrderAsc(orderIds)
+                .stream()
+                .collect(Collectors.groupingBy(PickingItem::getPickingOrderId));
         return page.map(order -> {
-            List<PickingItemResponse> items = pickingItemRepository
-                    .findByPickingOrderIdOrderBySortOrderAsc(order.getId())
+            List<PickingItemResponse> items = itemsByOrder
+                    .getOrDefault(order.getId(), List.of())
                     .stream().map(PickingItemResponse::from).toList();
             return PickingOrderResponse.from(order, items);
         });
@@ -621,6 +636,8 @@ public class PickingService {
         try {
             return Integer.parseInt(digits);
         } catch (NumberFormatException e) {
+            // C4 fix: log warn quando corredor não tem sufixo numérico (S-shape impreciso)
+            log.warn("extractAisleNumber: corredor '{}' sem sufixo numérico — sortOrder S-shape pode ser impreciso", aisleCode);
             return 0;
         }
     }

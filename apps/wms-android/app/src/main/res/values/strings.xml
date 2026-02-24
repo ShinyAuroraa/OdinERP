@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Odin WMS</string>
+    <string name="login_title">WMS Operações</string>
+    <string name="login_username_hint">Usuário</string>
+    <string name="login_password_hint">Senha</string>
+    <string name="login_button">Entrar</string>
+    <string name="login_error_credentials">Usuário ou senha inválidos</string>
+    <string name="login_error_network">Sem conexão — verifique o WiFi</string>
+    <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_offline_banner">Dados offline · atualizado em %s</string>
+    <string name="operations_title">Operações</string>
+    <string name="scanner_title">Leitor</string>
+    <string name="profile_title">Perfil</string>
+    <string name="logout_button">Sair</string>
+    <string name="scanner_manual_input">Digitar manualmente</string>
+    <string name="scanner_permission_required">Permissão de câmera necessária</string>
+    <string name="scanner_grant_permission">Conceder Permissão</string>
+    <string name="operation_receiving">Recebimento</string>
+    <string name="operation_picking">Picking</string>
+    <string name="operation_inventory">Inventário</string>
+    <string name="operation_transfer">Transferências</string>
+    <string name="operation_reports">Relatórios</string>
+</resources>
