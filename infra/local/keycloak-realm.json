@@ -1,0 +1,105 @@
+{
+  "realm": "odin",
+  "enabled": true,
+  "displayName": "Odin ERP",
+  "displayNameHtml": "<b>Odin ERP</b>",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "roles": {
+    "realm": [
+      { "name": "ROLE_WMS_ADMIN",    "composite": false },
+      { "name": "ROLE_WMS_OPERATOR", "composite": false },
+      { "name": "ROLE_FINANCE",      "composite": false }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "wms-web",
+      "name": "WMS Web Frontend",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:3001/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:3001"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "wms-service",
+      "name": "WMS Backend Service",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "bearerOnly": true,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@odin.local",
+      "firstName": "Admin",
+      "lastName": "WMS",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ROLE_WMS_ADMIN", "ROLE_WMS_OPERATOR", "ROLE_FINANCE"]
+    },
+    {
+      "username": "operador",
+      "enabled": true,
+      "email": "operador@odin.local",
+      "firstName": "Operador",
+      "lastName": "WMS",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Operador@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ROLE_WMS_OPERATOR"]
+    },
+    {
+      "username": "financeiro",
+      "enabled": true,
+      "email": "financeiro@odin.local",
+      "firstName": "Financeiro",
+      "lastName": "WMS",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Finance@123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ROLE_FINANCE"]
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 const TOKEN_COOKIE = 'wms-auth-token'
 const TENANT_COOKIE = 'x-tenant-id'
 
-const PUBLIC_PATHS = ['/login', '/unauthorized', '/api/auth', '/silent-check-sso.html', '/_next', '/favicon.ico']
+const PUBLIC_PATHS = ['/login', '/unauthorized', '/api/auth', '/api/health', '/api/metrics', '/silent-check-sso.html', '/_next', '/favicon.ico']
 
 const ROLE_PROTECTED_PATHS: Record<string, string[]> = {
   '/admin': ['WMS_ADMIN'],

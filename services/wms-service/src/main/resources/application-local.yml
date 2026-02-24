@@ -6,7 +6,7 @@ spring:
           jwk-set-uri: http://localhost:8090/realms/odin/protocol/openid-connect/certs
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/wms_db
+    url: jdbc:postgresql://localhost:5433/wms_db
     username: wms_user
     password: wms_pass
   data:
