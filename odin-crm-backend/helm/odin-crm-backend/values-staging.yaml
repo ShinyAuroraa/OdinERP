@@ -1,0 +1,14 @@
+replicaCount: 1
+
+image:
+  tag: "latest"
+
+ingress:
+  host: "crm-staging.odin.internal"
+
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 3
+
+pdb:
+  minAvailable: 1

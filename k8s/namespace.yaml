@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: odin-crm-staging
+  labels:
+    istio-injection: enabled
+    app.kubernetes.io/managed-by: argocd
+    environment: staging

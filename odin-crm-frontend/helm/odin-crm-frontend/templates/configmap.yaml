@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: odin-crm-frontend-config
+  labels:
+    {{- include "odin-crm-frontend.labels" . | nindent 4 }}
+data:
+  NEXTAUTH_URL: "https://{{ .Values.ingress.host }}"
+  KEYCLOAK_ISSUER: "https://keycloak.odin.internal/realms/odin"
+  KEYCLOAK_CLIENT_ID: "odin-crm-frontend"
+  NODE_ENV: "production"

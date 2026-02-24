@@ -1,0 +1,36 @@
+replicaCount: 3
+
+image:
+  repository: ""
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  host: "crm.odin.internal"
+  certArn: ""
+
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "250m"
+  limits:
+    memory: "1Gi"
+    cpu: "1000m"
+
+autoscaling:
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+pdb:
+  minAvailable: 2
+
+db:
+  host: "odin-rds.odin.internal"
+  port: "5432"
+  name: "odin_crm"

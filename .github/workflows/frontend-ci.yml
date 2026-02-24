@@ -1,0 +1,119 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'odin-crm-frontend/**'
+  pull_request:
+    paths:
+      - 'odin-crm-frontend/**'
+
+env:
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  lint-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: odin-crm-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: odin-crm-frontend/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Type check
+        run: pnpm type-check
+
+  build:
+    name: Next.js Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: odin-crm-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: odin-crm-frontend/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+        env:
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: ci-build-secret-placeholder-min-32chars!!
+          KEYCLOAK_CLIENT_ID: odin-crm-frontend
+          KEYCLOAK_CLIENT_SECRET: ci-placeholder
+          KEYCLOAK_ISSUER: http://localhost:8180/realms/odin
+
+  docker-push:
+    name: Docker Build & Push to ECR
+    runs-on: ubuntu-latest
+    needs: [lint-typecheck, build]
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push frontend image
+        run: |
+          docker build \
+            -f odin-crm-frontend/docker/Dockerfile \
+            -t ${{ secrets.ECR_REGISTRY }}/odin-crm-frontend:${{ github.sha }} \
+            -t ${{ secrets.ECR_REGISTRY }}/odin-crm-frontend:latest \
+            odin-crm-frontend/
+          docker push ${{ secrets.ECR_REGISTRY }}/odin-crm-frontend:${{ github.sha }}
+          docker push ${{ secrets.ECR_REGISTRY }}/odin-crm-frontend:latest
+
+  deploy:
+    name: Update Staging values (ArgoCD GitOps)
+    runs-on: ubuntu-latest
+    needs: [docker-push]
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install yq
+        run: |
+          wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          chmod +x /usr/local/bin/yq
+      - name: Update frontend image tag
+        run: |
+          yq e '.image.tag = "${{ github.sha }}"' -i \
+            odin-crm-frontend/helm/odin-crm-frontend/values-staging.yaml
+      - name: Commit and push updated values
+        run: |
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add odin-crm-frontend/helm/odin-crm-frontend/values-staging.yaml
+          git diff --staged --quiet || git commit -m "ci: update frontend image tag ${{ github.sha }} [skip ci]"
+          git push

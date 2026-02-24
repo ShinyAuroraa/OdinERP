@@ -1,0 +1,110 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'odin-crm-backend/**'
+  pull_request:
+    paths:
+      - 'odin-crm-backend/**'
+
+env:
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  test:
+    name: Test & Coverage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: odin-crm-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+      - name: Run tests with coverage
+        run: ./gradlew test jacocoTestReport
+      - name: Enforce 80% coverage
+        run: ./gradlew jacocoTestCoverageVerification
+
+  build:
+    name: Build JAR
+    runs-on: ubuntu-latest
+    needs: [test]
+    defaults:
+      run:
+        working-directory: odin-crm-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+      - name: Build bootJar
+        run: ./gradlew :crm-web:bootJar -x test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: odin-crm-backend/crm-web/build/libs/*.jar
+          retention-days: 1
+
+  docker-push:
+    name: Docker Build & Push to ECR
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push backend image
+        run: |
+          docker build \
+            -f odin-crm-backend/docker/Dockerfile \
+            -t ${{ secrets.ECR_REGISTRY }}/odin-crm-backend:${{ github.sha }} \
+            -t ${{ secrets.ECR_REGISTRY }}/odin-crm-backend:latest \
+            odin-crm-backend/
+          docker push ${{ secrets.ECR_REGISTRY }}/odin-crm-backend:${{ github.sha }}
+          docker push ${{ secrets.ECR_REGISTRY }}/odin-crm-backend:latest
+
+  deploy:
+    name: Update Staging values (ArgoCD GitOps)
+    runs-on: ubuntu-latest
+    needs: [docker-push]
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install yq
+        run: |
+          wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          chmod +x /usr/local/bin/yq
+      - name: Update backend image tag
+        run: |
+          yq e '.image.tag = "${{ github.sha }}"' -i \
+            odin-crm-backend/helm/odin-crm-backend/values-staging.yaml
+      - name: Commit and push updated values
+        run: |
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add odin-crm-backend/helm/odin-crm-backend/values-staging.yaml
+          git diff --staged --quiet || git commit -m "ci: update backend image tag ${{ github.sha }} [skip ci]"
+          git push
