@@ -1,0 +1,29 @@
+storyId: STORY-FE-3.1
+storyFile: docs/stories/11.1.wms-frontend-receiving.story.md
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+summary: >
+  Story 11.1 implementada com sucesso. ReceivingList, ReceivingForm,
+  ReceivingDetail e ReceivingItemModal implementados com cobertura de testes
+  completa (5 testes cada). Sidebar atualizada. DataTable usa prop `loading`
+  corretamente. StatusBadge atualizado para suportar prop `label` opcional.
+
+qualityGates:
+  tests: PASS         # 109/109 testes passando
+  typecheck: PASS     # tsc --noEmit sem erros
+  lint: PASS          # ESLint sem warnings/errors
+  build: PASS         # Next.js build bem-sucedido
+
+checks:
+  - id: "11.1-QA-001"
+    severity: low
+    category: code
+    description: >
+      ReceivingItemModal usa textarea para serialNumbers (split por newline).
+      Poderia usar um array input mais robusto no futuro.
+    recommendation: "Manter como tech debt para Wave futura."
+    status: WAIVED
+
+issues: []

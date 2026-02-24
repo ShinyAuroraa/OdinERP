@@ -1,0 +1,20 @@
+storyId: STORY-FE-3.2
+storyFile: docs/stories/11.2.wms-frontend-putaway.story.md
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+summary: >
+  Story 11.2 implementada com sucesso. PutawayList, PutawayConfirmModal,
+  QuarantineList e QuarantineDecideModal implementados com cobertura de testes
+  completa (5 testes cada). Autorização baseada em role (WMS_OPERATOR /
+  WMS_SUPERVISOR) funcionando corretamente.
+
+qualityGates:
+  tests: PASS         # 109/109 testes passando
+  typecheck: PASS     # tsc --noEmit sem erros
+  lint: PASS          # ESLint sem warnings/errors
+  build: PASS         # Next.js build bem-sucedido
+
+checks: []
+issues: []

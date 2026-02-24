@@ -54,7 +54,8 @@ const VARIANT_CLASSES: Record<StatusVariant, string> = {
 
 interface StatusBadgeProps {
   status: string
-  variant?: 'default' | 'outline'
+  label?: string
+  variant?: 'default' | 'success' | 'warning' | 'destructive' | 'outline'
   className?: string
 }
 
@@ -62,12 +63,12 @@ interface StatusBadgeProps {
  * StatusBadge — badge de status WMS com cores padronizadas.
  * Fallback: badge secondary para status desconhecidos.
  */
-export function StatusBadge({ status, className }: StatusBadgeProps) {
+export function StatusBadge({ status, label: labelProp, className }: StatusBadgeProps) {
   const upper = status.toUpperCase().replace(/\s+/g, '_')
   const variantKey = STATUS_MAP[upper] ?? 'secondary'
   const variantClass = VARIANT_CLASSES[variantKey]
 
-  const label = status
+  const label = labelProp ?? status
     .toLowerCase()
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
