@@ -127,6 +127,9 @@ dependencies {
     // Kotlin Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
+    // Coil — image loading in Compose (for damage photos)
+    implementation("io.coil-kt:coil-compose:2.7.0")
+
     // Unit Tests (JUnit 5 + MockK)
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
@@ -134,6 +137,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("androidx.work:work-testing:2.9.1")
 
     // Instrumented Tests
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
