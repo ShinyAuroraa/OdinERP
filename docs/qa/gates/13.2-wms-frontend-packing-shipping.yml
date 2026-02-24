@@ -1,0 +1,20 @@
+storyId: STORY-FE-5.2
+storyFile: docs/stories/13.2.wms-frontend-packing-shipping.story.md
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+summary: >
+  Story 13.2 implementada com sucesso. PackingList com ações Iniciar/Concluir inline por linha,
+  ShippingList com ação Despachar + modal Nova Expedição. Hooks completos para packing e shipping
+  com invalidação de cache adequada. Sidebar Packing e Shipping implemented: true.
+  6 testes de packing + 6 de shipping = 12 novos testes.
+
+qualityGates:
+  tests: PASS         # 151/151 testes passando
+  typecheck: PASS     # tsc --noEmit sem erros
+  lint: PASS          # ESLint sem warnings/errors
+  build: PASS         # Next.js build bem-sucedido
+
+checks: []
+issues: []

@@ -42,9 +42,9 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Inventário', href: '/inventory', icon: ClipboardList, implemented: true },
   { label: 'Auditoria', href: '/audit', icon: FileSearch, implemented: true },
   { label: 'Transferências', href: '/transfers', icon: ArrowLeftRight, implemented: true },
-  { label: 'Picking', href: '/picking', icon: ShoppingCart, implemented: false },
-  { label: 'Packing', href: '/packing', icon: Box, implemented: false },
-  { label: 'Shipping', href: '/shipping', icon: Ship, implemented: false },
+  { label: 'Picking', href: '/picking', icon: ShoppingCart, implemented: true },
+  { label: 'Packing', href: '/packing', icon: Box, implemented: true },
+  { label: 'Shipping', href: '/shipping', icon: Ship, implemented: true },
   { label: 'MRP', href: '/mrp', icon: Factory, implemented: false },
   { label: 'Relatórios', href: '/reports', icon: FileText, implemented: false },
 ]
