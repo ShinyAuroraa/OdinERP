@@ -1,0 +1,56 @@
+storyId: STORY-FE-2.1
+storyTitle: "Gestão de Armazéns — CRUD + Hierarquia + Mapa Visual"
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: CONCERNS
+
+checks:
+  - name: code_review
+    status: PASS
+    notes: "Componentes seguem padrão shadcn/ui + React Query v5. WarehouseList usa DataTable com colunas corretas. WarehouseForm usa RHF + Zod. LocationGrid implementa grid visual com cores por status."
+
+  - name: unit_tests
+    status: PASS
+    notes: "13 novos testes: WarehouseList×5, WarehouseForm×4, LocationGrid×4. Total: 89/89 passando."
+
+  - name: acceptance_criteria
+    status: PARTIAL
+    notes: |
+      AC1 ✅ Página /warehouses com DataTable, busca, filtro status, botão Novo Armazém (ADMIN only), loading/empty state
+      AC2 ✅ Formulário criar/editar com Zod validation, toast sonner, React Query invalidate
+      AC3 ⚠️ Drill-down parcial: ZoneList + LocationGrid implementados; AisleList/ShelfList são débito técnico
+      AC4 ✅ LocationGrid com cores por status (AVAILABLE/OCCUPIED/BLOCKED/QUARANTINE), filtro por LocationType
+      AC5 ✅ React Query hooks completos (useWarehouses, useZones, useLocations, mutations)
+      AC6 ✅ TypeScript types em types/warehouse.ts
+      AC7 ✅ Role-based: listagem all roles, CRUD apenas WMS_ADMIN
+      AC8 ✅ 13 testes unitários
+
+  - name: no_regressions
+    status: PASS
+    notes: "build ✅, lint ✅, typecheck ✅, 89/89 testes ✅"
+
+  - name: performance
+    status: PASS
+    notes: "Bundle sizes: /warehouses = 4.25kB, /warehouses/[id] = 7.86kB (dentro dos limites aceitáveis)"
+
+  - name: security
+    status: PASS
+    notes: "Sem hardcoded secrets. role-based UI via useHasRole('WMS_ADMIN'). JWT via useAuth() para todas as chamadas API."
+
+  - name: documentation
+    status: PASS
+    notes: "Story atualizada com File List, Completion Notes, Debug Log e QA Results."
+
+issues:
+  - id: QA-10.1-001
+    severity: low
+    category: code
+    description: "Drill-down de Aisle (Corredor) e Shelf (Prateleira) não implementados. ZoneList cobre até zona; LocationGrid exige shelfId pré-conhecido. AC3 especificava Drill-down até Corredor→Prateleira→Grid."
+    recommendation: "Registrar como débito técnico. Implementar AisleList e ShelfList em story futura (Wave 2 ou 3 backlog). Impacto operacional baixo pois LocationGrid funciona via shelfId direto."
+    status: OPEN
+
+summary: |
+  Story 10.1 implementada com sucesso. Hierarquia 5 níveis coberta com React Query hooks para todos
+  os níveis. LocationGrid visual com cores funcionando. 13 testes passando. Build produção OK.
+  Único concern: drill-down intermediário (aisles/shelves) não implementado nesta story.
+  Aprovado com CONCERNS — concern de baixa severidade não bloqueia merge.
