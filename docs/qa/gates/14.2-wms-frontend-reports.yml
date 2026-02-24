@@ -1,0 +1,35 @@
+storyId: STORY-FE-6.2
+storyTitle: "Relatórios Regulatórios — SNGPC, Anvisa, Receituário e Agendamento"
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+checks:
+  code_review:
+    status: PASS
+    notes: "ReportList.tsx — Tabs bem estruturadas (SNGPC/Anvisa/Receituário/Agendamentos). GenerateForm por aba com validação react-hook-form. ScheduleItem com toggle e badge de status."
+  unit_tests:
+    status: PASS
+    notes: "6 testes: renderiza header, loading state, abas (getAllByText para múltiplas ocorrências SNGPC), botão Gerar Relatório, aba Agendamentos, estado vazio — todos passando."
+  acceptance_criteria:
+    status: PASS
+    notes: "AC1-6 atendidos: /reports page, 4 abas, formulário por tipo, tabela de relatórios, agendamentos, hooks, types, Sidebar enabled."
+  no_regressions:
+    status: PASS
+    notes: "163/163 testes passando. Nenhuma regressão detectada."
+  performance:
+    status: PASS
+    notes: "staleTime 60s para relatórios, 300s para schedules. Bundle /reports: 4.49 kB."
+  security:
+    status: PASS
+    notes: "Download URLs via fileUrl com rel=noopener noreferrer. API calls via apiClient autenticado."
+  documentation:
+    status: PASS
+    notes: "ReportType, ReportStatus, ScheduleFrequency bem tipados em types/reports.ts."
+
+issues: []
+
+summary: >
+  Story 14.2 implementada com sucesso. Página de relatórios regulatórios completa:
+  abas SNGPC/Anvisa/Receituário com geração de período, agendamentos com toggle ativo/inativo.
+  6/6 testes passando. Build OK (25 rotas).

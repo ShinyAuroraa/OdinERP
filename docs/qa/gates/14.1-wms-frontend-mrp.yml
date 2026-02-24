@@ -1,0 +1,35 @@
+storyId: STORY-FE-6.1
+storyTitle: "MRP Integration — Ordens de Produção + Requisições de Material"
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+checks:
+  code_review:
+    status: PASS
+    notes: "MrpList.tsx — clean DataTable com filtro de status. Badge STOCK_SHORTAGE bem implementado. Hook useMaterialRequests com staleTime 60s correto."
+  unit_tests:
+    status: PASS
+    notes: "6 testes: renderiza lista, loading state, empty state, header, badge Alerta, status Sem Estoque — todos passando."
+  acceptance_criteria:
+    status: PASS
+    notes: "AC1-5 atendidos: /mrp page, DataTable com status filter, STOCK_SHORTAGE badge, React Query hooks, TypeScript types, Sidebar enabled."
+  no_regressions:
+    status: PASS
+    notes: "163/163 testes passando. Nenhuma regressão detectada."
+  performance:
+    status: PASS
+    notes: "staleTime 60s para dados de integração MRP. Bundle /mrp: 2.11 kB."
+  security:
+    status: PASS
+    notes: "Sem dados sensíveis expostos. API calls via apiClient autenticado."
+  documentation:
+    status: PASS
+    notes: "Tipos TypeScript documentam a estrutura da integração MRP."
+
+issues: []
+
+summary: >
+  Story 14.1 implementada com sucesso. Integração frontend WMS↔MRP completa:
+  MrpList com DataTable, filtro de status, badge de alerta para STOCK_SHORTAGE.
+  6/6 testes passando. Build OK (25 rotas).

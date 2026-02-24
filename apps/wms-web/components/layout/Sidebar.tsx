@@ -45,8 +45,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Picking', href: '/picking', icon: ShoppingCart, implemented: true },
   { label: 'Packing', href: '/packing', icon: Box, implemented: true },
   { label: 'Shipping', href: '/shipping', icon: Ship, implemented: true },
-  { label: 'MRP', href: '/mrp', icon: Factory, implemented: false },
-  { label: 'Relatórios', href: '/reports', icon: FileText, implemented: false },
+  { label: 'MRP', href: '/mrp', icon: Factory, implemented: true },
+  { label: 'Relatórios', href: '/reports', icon: FileText, implemented: true },
 ]
 
 interface SidebarNavProps {
