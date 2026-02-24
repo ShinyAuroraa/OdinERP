@@ -1,0 +1,20 @@
+storyId: STORY-FE-4.1
+storyFile: docs/stories/12.1.wms-frontend-stock.story.md
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+summary: >
+  Story 12.1 implementada com sucesso. StockList com DataTable (filtros warehouse/produto/lote),
+  OccupationPanel com cards de zona e progress bar CSS (sem dependência de componente externo),
+  React Query hooks (useStockBalance, useLocationStock, useWarehouseOccupation) com staleTime 30s.
+  6 testes unitários passando. Sidebar atualizado com implemented: true.
+
+qualityGates:
+  tests: PASS         # 133/133 testes passando
+  typecheck: PASS     # tsc --noEmit sem erros
+  lint: PASS          # ESLint sem warnings/errors
+  build: PASS         # Next.js build bem-sucedido (19 rotas)
+
+checks: []
+issues: []
