@@ -1,0 +1,136 @@
+storyId: STORY-FE-1.1
+epicId: EPIC-FE-001
+title: "Bootstrap Next.js 15 + Keycloak PKCE + Layout Shell"
+reviewDate: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+# QA Gate — STORY-FE-1.1
+# Resultado: PASS com 2 concerns LOW
+
+## Quality Checks
+
+checks:
+  code_review:
+    status: PASS
+    notes: |
+      - Next.js 15.3.9 (CVE-2025-66478 corrigido — upgrade de 15.3.0 no dev)
+      - Middleware edge-safe: JWT decode via atob + JSON.parse (sem deps externas) ✅
+      - PKCE S256 configurado corretamente em KeycloakProvider ✅
+      - Token em React state (não localStorage) — atende AC2 ✅
+      - Cookie wms-auth-token com SameSite=Strict ✅
+      - API client com Authorization + X-Tenant-Id headers ✅
+      - Rewrites proxy no next.config.ts para /api/proxy → WMS backend ✅
+      - Nenhum secret hardcoded — todas as configs via env vars ✅
+
+  unit_tests:
+    status: PASS
+    notes: |
+      33/33 testes passando (threshold: ≥8 conforme AC8)
+      - middleware.test.ts: 12 testes (parseJwtPayload, isTokenExpired, cookies, roles)
+      - useAuth.test.tsx: 2 testes
+      - useHasRole.test.tsx: 4 testes
+      - TenantContext.test.tsx: 2 testes
+      - client.test.ts: 5 testes
+      - Layout.test.tsx: 8 testes (Sidebar, Header, Breadcrumbs)
+      + e2e/auth.spec.ts: 4 cenários Playwright
+
+  acceptance_criteria:
+    status: PASS
+    notes: |
+      AC1: Next.js 15.3.9 + App Router + TypeScript strict + noUncheckedIndexedAccess ✅
+      AC2: Keycloak PKCE S256, token em React state, não localStorage ✅
+      AC3: middleware.ts — protege /(auth)/, extrai tenant_id, role-based redirect ✅
+      AC4: TenantContext, AuthContext, useAuth(), useHasRole(), useTenant() ✅
+      AC5: apiClient com Bearer + X-Tenant-Id, 401→logout, 403→/unauthorized ✅
+      AC6: Sidebar (15 itens), Header (user+tenant+logout), Breadcrumbs, mobile drawer ✅
+      AC7: /unauthorized, error.tsx, not-found.tsx, loading.tsx ✅
+      AC8: 33 testes + 1 e2e Playwright ✅
+      AC9: lint ✅ + typecheck ✅
+
+  no_regressions:
+    status: PASS
+    notes: "Primeira story do EPIC-FE-001 — sem regressões existentes para verificar."
+
+  performance:
+    status: PASS
+    notes: |
+      - TanStack Query v5 com staleTime 30s, gcTime 5min (evita refetch excessivo)
+      - Next.js App Router com Server Components onde possível
+      - Token refresh a cada 25s (antes dos 30s de expiração — eficiente)
+      - shadcn/ui: componentes tree-shakeable via Radix UI
+
+  security:
+    status: PASS
+    notes: |
+      - PKCE S256 previne interceptação de authorization code ✅
+      - Token em React state (não localStorage) — proteção contra XSS ✅
+      - SameSite=Strict nos cookies — proteção CSRF ✅
+      - clearAuthCookies() chamado no logout e token expirado ✅
+      - Sem secrets hardcoded (env vars via .env.local.example) ✅
+      - CVE-2025-66478 corrigido (15.3.0 → 15.3.9) ✅
+      - checkLoginIframe: false — compatível com CSP strict ✅
+
+  documentation:
+    status: PASS
+    notes: |
+      - File List completo com 48 arquivos
+      - .env.local.example documentado
+      - Dev Notes com arquitetura de auth explicada
+      - README implícito nos comentários inline
+
+## Issues Found
+
+issues:
+  - id: QA-9.1-001
+    severity: low
+    category: security
+    description: |
+      Cookies wms-auth-token e x-tenant-id são definidos via document.cookie (client-side),
+      portanto NÃO são httpOnly. O token JWT é JavaScript-readable no cookie.
+      O token está primariamente em React state (memória) — AC2 atendido.
+      O cookie serve apenas de transport para o middleware Next.js.
+    recommendation: |
+      Para produção, considerar Route Handler (/api/auth/token) que seta cookie httpOnly
+      server-side após receber o token do client. Isso elimina o risco residual.
+      Candidato para tech debt em Story 9.2+ ou story de segurança dedicada.
+    blocked: false
+    waived: false
+
+  - id: QA-9.1-002
+    severity: low
+    category: tests
+    description: |
+      Testes e2e (Playwright) requerem servidor Next.js em execução + instância Keycloak.
+      Em CI/CD sem Keycloak, os testes e2e vão falhar na etapa de redirect para Keycloak.
+      Os 4 cenários testam comportamento com mock de cookies direto (não fluxo Keycloak completo).
+    recommendation: |
+      Configurar mock de Keycloak (keycloak-mock ou Testcontainers Keycloak) em CI.
+      Alternativa: marcar testes e2e como @skip em ambientes sem Keycloak.
+      Story 9.2+ pode adicionar setup de Keycloak para testes de integração.
+    blocked: false
+    waived: true
+    waiver_reason: "MVP — Keycloak mock em CI é escopo de story de infrastructure/DevOps"
+
+## Summary
+
+summary:
+  verdict: PASS
+  score: "9/10 — Excelente implementação de fundação frontend"
+  strengths:
+    - PKCE S256 implementado corretamente (segurança auth)
+    - Edge middleware sem dependências externas (performance)
+    - shadcn/ui configurado manualmente (sem CLI — correto para automação)
+    - 33 testes com boa cobertura de auth, hooks, layout e API client
+    - CVE corrigido proativamente durante desenvolvimento
+    - TypeScript strict com noUncheckedIndexedAccess (qualidade máxima)
+  concerns:
+    - QA-9.1-001 (LOW): Cookie JWT não é httpOnly — tech debt para prod
+    - QA-9.1-002 (LOW): E2e sem Keycloak real em CI — waived para MVP
+  recommendation: |
+    Story APROVADA. Fundação sólida para EPIC-FE-001.
+    QA-9.1-001 deve ser registrado como tech debt para resolução antes de deploy em produção.
+    Todas as stories subsequentes podem ser desenvolvidas sobre esta fundação com confiança.
+  next_steps:
+    - "@devops: criar PR para Story 9.1 → main"
+    - "@sm: criar Story 9.2 (Design System & Componentes Base)"
