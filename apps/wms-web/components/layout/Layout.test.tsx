@@ -54,10 +54,10 @@ describe('Sidebar', () => {
     expect(screen.getByText('Relatórios')).toBeInTheDocument()
   })
 
-  it('renderiza badges "Em breve" para itens não implementados', () => {
+  it('todos os itens de navegação estão implementados (sem badges "Em breve")', () => {
     render(<Sidebar />)
-    const badges = screen.getAllByText('Em breve')
-    expect(badges.length).toBeGreaterThan(0)
+    const badges = screen.queryAllByText('Em breve')
+    expect(badges.length).toBe(0)
   })
 })
 
