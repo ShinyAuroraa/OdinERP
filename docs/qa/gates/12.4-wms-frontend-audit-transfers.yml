@@ -1,0 +1,22 @@
+storyId: STORY-FE-4.4
+storyFile: docs/stories/12.4.wms-frontend-audit-transfers.story.md
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+summary: >
+  Story 12.4 implementada com sucesso. AuditLogList com filtros entityType/from/to + paginação +
+  botão Export JSON (ADMIN), RetentionConfig com form PUT inline. TransferList com filtro status +
+  ações Confirmar/Cancelar por linha, TransferModal para criação. Hooks: useAuditLog, useRetentionConfig,
+  useUpdateRetentionConfig, useTransfers, useCreateTransfer, useConfirmTransfer, useCancelTransfer.
+  6 testes de audit + 6 de transfers (total 12 novos) passando.
+  Sidebar Auditoria e Transferências implemented: true.
+
+qualityGates:
+  tests: PASS         # 133/133 testes passando
+  typecheck: PASS     # tsc --noEmit sem erros
+  lint: PASS          # ESLint sem warnings/errors
+  build: PASS         # Next.js build bem-sucedido
+
+checks: []
+issues: []
