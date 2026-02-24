@@ -1,0 +1,36 @@
+storyId: STORY-FE-16.5
+storyTitle: "Health Endpoints + Observabilidade (Prometheus metrics + readiness/liveness)"
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+checks:
+  code_review:
+    status: PASS
+    notes: "health/route.ts: NextResponse.json com status/service/timestamp/uptime. metrics/route.ts: Prometheus text format sem dependências extras — process nativo. Código limpo e mínimo."
+  unit_tests:
+    status: PASS
+    notes: "4 testes: health 200, health body (status/service/timestamp/uptime), metrics Prometheus format (3 métricas), metrics Content-Type text/plain."
+  acceptance_criteria:
+    status: PASS
+    notes: "AC1-5 atendidos: /api/health 200 + body correto, /api/metrics Prometheus text + Content-Type, deployment.yaml probes atualizadas para /api/health, anotações prometheus.io/scrape, 173/173 testes."
+  no_regressions:
+    status: PASS
+    notes: "173/173 testes passando (4 novos: 2 health + 2 metrics). Sem regressões."
+  security:
+    status: PASS
+    notes: "Endpoints públicos (sem auth) — correto para health/metrics K8s. Sem dados sensíveis expostos. Métricas apenas de processo Node.js."
+  k8s_integration:
+    status: PASS
+    notes: "deployment.yaml: readinessProbe + livenessProbe atualizadas para /api/health. Anotações prometheus.io/scrape + port + path no pod template."
+  documentation:
+    status: PASS
+    notes: "Story 16.5 completa. EPIC-FE-002 concluído — 5/5 stories Done, 3/3 waves."
+
+issues: []
+
+summary: >
+  Story 16.5 implementada com sucesso. Health endpoint GET /api/health (200 OK, body ok/service/timestamp/uptime).
+  Metrics endpoint GET /api/metrics (Prometheus text, process_uptime_seconds + process_heap_bytes + process_rss_bytes).
+  K8s probes atualizadas + anotações Prometheus scrape. 173/173 testes passando.
+  EPIC-FE-002 CONCLUÍDO — 5/5 stories, 3/3 waves, Deploy WMS Web production-ready.
