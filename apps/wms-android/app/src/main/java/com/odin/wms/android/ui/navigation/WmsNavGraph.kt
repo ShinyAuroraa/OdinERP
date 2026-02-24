@@ -14,6 +14,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.odin.wms.android.ui.dashboard.DashboardScreen
+import com.odin.wms.android.ui.inventory.InventoryCountScreen
+import com.odin.wms.android.ui.inventory.InventoryCountingListScreen
+import com.odin.wms.android.ui.inventory.InventoryDoubleCountScreen
+import com.odin.wms.android.ui.inventory.InventorySessionListScreen
+import com.odin.wms.android.ui.inventory.InventorySubmitScreen
 import com.odin.wms.android.ui.login.LoginScreen
 import com.odin.wms.android.ui.operations.OperationsScreen
 import com.odin.wms.android.ui.picking.PickingCompleteScreen
@@ -30,6 +35,9 @@ import com.odin.wms.android.ui.scanner.BarcodeScannerScreen
 import com.odin.wms.android.ui.shipping.ShippingConfirmScreen
 import com.odin.wms.android.ui.shipping.ShippingDetailScreen
 import com.odin.wms.android.ui.shipping.ShippingListScreen
+import com.odin.wms.android.ui.transfer.TransferConfirmScreen
+import com.odin.wms.android.ui.transfer.TransferCreateScreen
+import com.odin.wms.android.ui.transfer.TransferListScreen
 
 sealed class WmsScreen(val route: String) {
     data object Login           : WmsScreen("login")
@@ -110,6 +118,25 @@ sealed class WmsScreen(val route: String) {
             return r
         }
     }
+
+    // --- Inventory Flow (Story 8.4) ---
+    data object InventorySessionList : WmsScreen("inventory_session_list")
+    data object InventoryCountingList : WmsScreen("inventory_counting_list/{sessionId}") {
+        fun route(sessionId: String) = "inventory_counting_list/$sessionId"
+    }
+    data object InventoryCount : WmsScreen("inventory_count/{sessionId}/{itemId}") {
+        fun route(sessionId: String, itemId: String) = "inventory_count/$sessionId/$itemId"
+    }
+    data object InventoryDoubleCount : WmsScreen("inventory_double_count/{sessionId}/{itemId}") {
+        fun route(sessionId: String, itemId: String) = "inventory_double_count/$sessionId/$itemId"
+    }
+    data object InventorySubmit : WmsScreen("inventory_submit/{sessionId}") {
+        fun route(sessionId: String) = "inventory_submit/$sessionId"
+    }
+
+    // --- Transfer Flow (Story 8.4) ---
+    data object TransferList   : WmsScreen("transfer_list")
+    data object TransferCreate : WmsScreen("transfer_create")
 }
 
 @Composable
@@ -130,7 +157,12 @@ fun WmsNavGraph(
         !currentRoute.startsWith("picking_confirm") &&
         !currentRoute.startsWith("picking_complete") &&
         !currentRoute.startsWith("shipping_detail") &&
-        !currentRoute.startsWith("shipping_confirm")
+        !currentRoute.startsWith("shipping_confirm") &&
+        !currentRoute.startsWith("inventory_counting_list") &&
+        !currentRoute.startsWith("inventory_count") &&
+        !currentRoute.startsWith("inventory_double_count") &&
+        !currentRoute.startsWith("inventory_submit") &&
+        !currentRoute.startsWith("transfer_create")
 
     Scaffold(
         bottomBar = {
@@ -166,10 +198,12 @@ fun WmsNavGraph(
                     OperationsScreen(
                         onOperationClick = { operation ->
                             when (operation) {
-                                "Recebimento" -> navController.navigate(WmsScreen.ReceivingList.route)
-                                "Picking"     -> navController.navigate(WmsScreen.PickingList.route)
-                                "Expedição"   -> navController.navigate(WmsScreen.ShippingList.route)
-                                else -> { /* Story 8.4: Inventory/Transfer */ }
+                                "Recebimento"   -> navController.navigate(WmsScreen.ReceivingList.route)
+                                "Picking"       -> navController.navigate(WmsScreen.PickingList.route)
+                                "Expedição"     -> navController.navigate(WmsScreen.ShippingList.route)
+                                "Inventário"    -> navController.navigate(WmsScreen.InventorySessionList.route)
+                                "Transferências" -> navController.navigate(WmsScreen.TransferList.route)
+                                else -> { /* Future operations */ }
                             }
                         }
                     )
@@ -441,6 +475,149 @@ fun WmsNavGraph(
                         initialVehiclePlate = vehiclePlate,
                         onNavigateBack = { navController.popBackStack() },
                         onConfirmSuccess = { navController.popBackStack() }
+                    )
+                }
+
+                // ----- Inventory Flow (Story 8.4) -----
+
+                composable(WmsScreen.InventorySessionList.route) {
+                    InventorySessionListScreen(
+                        onSessionClick = { sessionId ->
+                            navController.navigate(WmsScreen.InventoryCountingList.route(sessionId))
+                        }
+                    )
+                }
+
+                composable(
+                    route = WmsScreen.InventoryCountingList.route,
+                    arguments = listOf(
+                        navArgument("sessionId") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
+                    val scannedCode = backStackEntry.savedStateHandle.get<String>("scannedCode")
+
+                    InventoryCountingListScreen(
+                        sessionId = sessionId,
+                        onItemClick = { sId, itemId ->
+                            navController.navigate(WmsScreen.InventoryCount.route(sId, itemId))
+                        },
+                        onScanClick = { navController.navigate(WmsScreen.Scanner.route) },
+                        onSubmitClick = { sId ->
+                            navController.navigate(WmsScreen.InventorySubmit.route(sId))
+                        },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = WmsScreen.InventoryCount.route,
+                    arguments = listOf(
+                        navArgument("sessionId") { type = NavType.StringType },
+                        navArgument("itemId")    { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
+                    val itemId    = backStackEntry.arguments?.getString("itemId") ?: return@composable
+
+                    InventoryCountScreen(
+                        sessionId = sessionId,
+                        itemId = itemId,
+                        onCountSuccess = { navController.popBackStack() },
+                        onDoubleCountClick = { sId, iId ->
+                            navController.navigate(WmsScreen.InventoryDoubleCount.route(sId, iId))
+                        },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = WmsScreen.InventoryDoubleCount.route,
+                    arguments = listOf(
+                        navArgument("sessionId") { type = NavType.StringType },
+                        navArgument("itemId")    { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
+                    val itemId    = backStackEntry.arguments?.getString("itemId") ?: return@composable
+
+                    InventoryDoubleCountScreen(
+                        sessionId = sessionId,
+                        itemId = itemId,
+                        onDoubleCountComplete = { navController.popBackStack() },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = WmsScreen.InventorySubmit.route,
+                    arguments = listOf(
+                        navArgument("sessionId") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
+
+                    InventorySubmitScreen(
+                        sessionId = sessionId,
+                        onSubmitSuccess = {
+                            navController.navigate(WmsScreen.InventorySessionList.route) {
+                                popUpTo(WmsScreen.InventorySessionList.route) { inclusive = true }
+                            }
+                        },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                // ----- Transfer Flow (Story 8.4) -----
+
+                composable(WmsScreen.TransferList.route) {
+                    TransferListScreen(
+                        onCreateClick = { navController.navigate(WmsScreen.TransferCreate.route) },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(WmsScreen.TransferCreate.route) { backStackEntry ->
+                    val scannedCode = backStackEntry.savedStateHandle.get<String>("scannedCode")
+
+                    TransferCreateScreen(
+                        scannedCode = scannedCode,
+                        onScanClick = { navController.navigate(WmsScreen.Scanner.route) },
+                        onConfirmClick = { sourceLocation, productCode, qty, lotNumber, destinationLocation ->
+                            // Store in backstack for TransferConfirmScreen via savedStateHandle
+                            navController.currentBackStackEntry?.savedStateHandle?.let { handle ->
+                                handle["transfer_source"] = sourceLocation
+                                handle["transfer_product"] = productCode
+                                handle["transfer_qty"] = qty
+                                handle["transfer_lot"] = lotNumber ?: ""
+                                handle["transfer_dest"] = destinationLocation
+                            }
+                            navController.navigate("transfer_confirm_screen")
+                        },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable("transfer_confirm_screen") {
+                    val prevEntry = navController.previousBackStackEntry
+                    val sourceLocation = prevEntry?.savedStateHandle?.get<String>("transfer_source") ?: ""
+                    val productCode    = prevEntry?.savedStateHandle?.get<String>("transfer_product") ?: ""
+                    val qty            = prevEntry?.savedStateHandle?.get<Int>("transfer_qty") ?: 0
+                    val lotText        = prevEntry?.savedStateHandle?.get<String>("transfer_lot") ?: ""
+                    val destLocation   = prevEntry?.savedStateHandle?.get<String>("transfer_dest") ?: ""
+
+                    TransferConfirmScreen(
+                        sourceLocation = sourceLocation,
+                        productCode = productCode,
+                        qty = qty,
+                        lotNumber = lotText.ifBlank { null },
+                        destinationLocation = destLocation,
+                        onConfirmSuccess = {
+                            navController.navigate(WmsScreen.TransferList.route) {
+                                popUpTo(WmsScreen.TransferList.route) { inclusive = true }
+                            }
+                        },
+                        onNavigateBack = { navController.popBackStack() }
                     )
                 }
             }
