@@ -1,0 +1,114 @@
+schema: 1
+story: "1.6"
+gate: CONCERNS
+status_reason: >
+  AC1-AC5 passam (workflows, Helm charts, ArgoCD manifests estruturalmente corretos).
+  AC6 e AC7 (verificação live de pods + TLS) ficam OPEN até infraestrutura AWS ser provisionada.
+  Issues médios não-bloqueantes documentados abaixo.
+reviewer: Quinn
+updated: "2026-02-24T13:00:00Z"
+
+ac_results:
+  - ac: "AC1 — GitHub Actions backend-ci.yml + frontend-ci.yml distintos"
+    status: PASS
+    notes: "Triggers com path filters corretos. Stages: test→build→docker-push→deploy (backend), lint-typecheck+build→docker-push→deploy (frontend)."
+  - ac: "AC2 — Jobs paralelos ubuntu-latest"
+    status: PASS
+    notes: "Frontend: lint-typecheck e build sem needs (paralelos). Backend: test→build sequencial por necessidade. ubuntu-latest em todos os jobs."
+  - ac: "AC3 — ECR push com SHA tag, apenas master"
+    status: PASS
+    notes: "OIDC sem hardcoded keys. Tag ${{ github.sha }} + latest. Condicional if: github.ref == refs/heads/master."
+  - ac: "AC4 — Helm charts com todos os templates"
+    status: PASS
+    notes: "Backend: Deployment, Service, Ingress, ConfigMap, ExternalSecret, HPA, PDB + _helpers. Frontend: mesmos exceto PDB (justificado — 2 replicas staging)."
+  - ac: "AC5 — ArgoCD Applications com auto-sync odin-crm-staging"
+    status: PASS
+    notes: "sync-wave 1+2, prune+selfHeal, ServerSideApply, CreateNamespace, retry 3x com backoff. repoURL correto (ShinyAuroraa/OdinERP master)."
+  - ac: "AC6 — Pods Running + Ready"
+    status: OPEN
+    notes: "Estrutura de Deployment, readinessProbe, livenessProbe, securityContext correta. Verificação live requer cluster EKS provisionado."
+  - ac: "AC7 — URL TLS válido"
+    status: OPEN
+    notes: "Ingress ALB com certArn, HTTPS 443 configurado. Verificação live requer ALB Controller + ACM cert + Route53."
+
+top_issues:
+  - id: SEC-001
+    severity: medium
+    finding: >
+      frontend-ci.yml build job contém placeholders de secrets em texto claro:
+      NEXTAUTH_SECRET: ci-build-secret-placeholder-min-32chars!! e
+      KEYCLOAK_CLIENT_SECRET: ci-placeholder. Valores são build-time apenas
+      (não runtime), mas o padrão pode induzir erros ao ser copiado.
+    suggested_action: >
+      Adicionar comentário explícito no workflow indicando que são placeholders
+      de build, ou usar secrets com fallback:
+      ${{ secrets.NEXTAUTH_SECRET || 'ci-placeholder-min-32-chars-for-build!' }}
+
+  - id: TEST-001
+    severity: medium
+    finding: >
+      AC6 (pods Running+Ready) e AC7 (URL TLS) não foram verificados —
+      requerem cluster EKS live, ECR repos criados, ArgoCD instalado,
+      ALB Controller, e ACM certificate configurado.
+    suggested_action: >
+      Executar Task 6 manualmente após provisionamento da infra AWS:
+      kubectl apply namespace, argocd apply, aguardar sync, kubectl get pods,
+      curl -I https://crm-staging.odin.internal
+
+  - id: MNT-001
+    severity: low
+    finding: >
+      ingress.yaml (backend e frontend) usa annotation deprecated
+      kubernetes.io/ingress.class: alb em vez de spec.ingressClassName: alb.
+      Funciona atualmente mas será removido em versões futuras do Kubernetes.
+    suggested_action: >
+      Migrar para spec.ingressClassName: alb e remover a annotation
+      kubernetes.io/ingress.class em próxima iteração dos Helm charts.
+
+  - id: MNT-002
+    severity: low
+    finding: >
+      values.yaml de backend e frontend tem image.repository: "" vazio.
+      Helm install sem sobrescrever esse valor resulta em imagem malformada
+      (/odin-crm-backend:latest sem registry prefix).
+    suggested_action: >
+      Adicionar validação no deployment.yaml:
+      {{ required "image.repository is required" .Values.image.repository }}
+      ou documentar claramente que o valor deve ser passado via --set.
+
+  - id: REL-001
+    severity: low
+    finding: >
+      yq baixado via releases/latest (não pinnado) em ambos os workflows.
+      Nova versão com breaking change pode quebrar silenciosamente o job deploy.
+    suggested_action: >
+      Pinnar versão específica, ex: yq_4.44.3 ou usar
+      mikefarah/yq GitHub Action em vez de wget.
+
+  - id: DOC-001
+    severity: low
+    finding: >
+      GitHub Secrets necessários (ECR_REGISTRY, AWS_REGION, OIDC_ROLE_ARN)
+      não documentados no repositório. Equipe nova não sabe o que configurar.
+    suggested_action: >
+      Criar .github/README.md ou seção em README principal documentando:
+      secrets necessários, IAM OIDC trust policy, e pré-requisitos de infra.
+
+quality_checks:
+  code_review: PASS
+  unit_tests: N/A
+  ac_verified: PARTIAL  # AC1-5 PASS, AC6-7 OPEN (infra live)
+  regressions: PASS
+  performance: PASS
+  security: PASS  # OIDC, ExternalSecret, runAsNonRoot, sem hardcoded secrets
+  docs: CONCERNS  # DOC-001
+
+waiver:
+  active: false
+
+notes: >
+  Story de infraestrutura/CI/CD. Task 6 (verificação live) é estruturalmente
+  diferente das demais — requer provisioning de infra AWS que está fora do
+  escopo desta story (EC2 EKS cluster compartilhado com WMS assume-se existente).
+  Gate CONCERNS é apropriado: artefatos corretos e deployáveis, verificação
+  live delegada ao time DevOps após provisionamento.
