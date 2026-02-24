@@ -48,6 +48,22 @@ public interface LotRepository extends JpaRepository<Lot, UUID> {
     List<Lot> findByTenantIdAndProductId(UUID tenantId, UUID productId);
 
     /**
+     * Busca em lote todos os lotes de uma lista de produtos.
+     * Substitui N queries por produto por 1 query com IN clause.
+     * Usado em AnvisaReportGenerator para eliminar padrão N+1 (QA-7.1-TD-002).
+     */
+    @Query("""
+            SELECT l FROM Lot l
+            LEFT JOIN FETCH l.product
+            WHERE l.tenantId = :tenantId
+              AND l.product.id IN :productIds
+            ORDER BY l.product.id ASC, l.createdAt ASC
+            """)
+    List<Lot> findByTenantIdAndProductIdIn(
+            @Param("tenantId") UUID tenantId,
+            @Param("productIds") java.util.List<UUID> productIds);
+
+    /**
      * FEFO com filtro opcional por data de expiração.
      * Retorna lotes ativos (active=true) ordenados por expiryDate ASC NULLS LAST.
      * expiryBefore=null → sem filtro de data (retorna todos os ativos).

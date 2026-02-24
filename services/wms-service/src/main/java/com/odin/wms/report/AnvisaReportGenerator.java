@@ -22,6 +22,12 @@ import java.util.stream.Collectors;
 /**
  * Gera linhas para o relatório ANVISA Vigilância Sanitária.
  * Retorna apenas produtos onde vigilanciaSanitaria = true.
+ *
+ * Fix QA-7.1-TD-002: refatorado de padrão O(N×M) queries para O(1) = 4 queries bulk.
+ * - Query 1: produtos com vigilânciaSanitaria=true do tenant
+ * - Query 2: todos os lotes desses produtos (IN clause)
+ * - Query 3: todos os movimentos dos lotes no período (IN clause)
+ * - Query 4: saldo atual de todos os lotes (IN clause — reutiliza findAvailableByTenantIdAndLotIdIn)
  */
 @Component
 @RequiredArgsConstructor
@@ -43,9 +49,11 @@ public class AnvisaReportGenerator {
         Instant from = dataInicio.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant to   = dataFim.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
 
-        // Busca produtos com vigilância sanitária habilitada
+        // Query 1: produtos com vigilância sanitária habilitada
         List<ProductWms> vigilanciaProducts = productWmsRepository
                 .findByTenantIdAndVigilanciaSanitaria(tenantId, true);
+
+        if (vigilanciaProducts.isEmpty()) return List.of();
 
         if (productIdFilter != null) {
             vigilanciaProducts = vigilanciaProducts.stream()
@@ -53,59 +61,89 @@ public class AnvisaReportGenerator {
                     .collect(Collectors.toList());
         }
 
+        if (vigilanciaProducts.isEmpty()) return List.of();
+
+        List<UUID> productIds = vigilanciaProducts.stream()
+                .map(ProductWms::getId)
+                .collect(Collectors.toList());
+
+        // Query 2: todos os lotes desses produtos em uma única query
+        List<Lot> allLots = lotRepository.findByTenantIdAndProductIdIn(tenantId, productIds);
+
+        if (lotIdFilter != null) {
+            allLots = allLots.stream()
+                    .filter(l -> l.getId().equals(lotIdFilter))
+                    .collect(Collectors.toList());
+        }
+
+        if (allLots.isEmpty()) return List.of();
+
+        List<UUID> lotIds = allLots.stream()
+                .map(Lot::getId)
+                .collect(Collectors.toList());
+
+        // Query 3: todos os movimentos dos lotes no período em uma única query
+        List<StockMovement> allMovements = stockMovementRepository
+                .findByTenantIdAndLotIdInAndCreatedAtBetween(tenantId, lotIds, from, to);
+
+        // Query 4: saldo atual de todos os lotes em uma única query
+        List<StockItem> allStockItems = stockItemRepository
+                .findAvailableByTenantIdAndLotIdIn(tenantId, lotIds);
+
+        // Agrupamento em memória
+        Map<UUID, List<StockMovement>> movementsByLotId = allMovements.stream()
+                .filter(m -> m.getLot() != null)
+                .collect(Collectors.groupingBy(m -> m.getLot().getId()));
+
+        Map<UUID, Integer> balanceByLotId = allStockItems.stream()
+                .filter(s -> s.getLot() != null)
+                .collect(Collectors.toMap(
+                        s -> s.getLot().getId(),
+                        StockItem::getQuantityAvailable,
+                        Integer::sum
+                ));
+
+        Map<UUID, ProductWms> productById = vigilanciaProducts.stream()
+                .collect(Collectors.toMap(ProductWms::getId, p -> p));
+
         List<AnvisaRow> rows = new ArrayList<>();
 
-        for (ProductWms product : vigilanciaProducts) {
-            // Lotes do produto
-            List<Lot> lots = lotRepository.findByTenantIdAndProductId(tenantId, product.getId());
-            if (lotIdFilter != null) {
-                lots = lots.stream()
-                        .filter(l -> l.getId().equals(lotIdFilter))
-                        .collect(Collectors.toList());
-            }
+        for (Lot lot : allLots) {
+            List<StockMovement> movements = movementsByLotId.getOrDefault(lot.getId(), List.of());
+            if (movements.isEmpty()) continue;
 
-            for (Lot lot : lots) {
-                // Movimentos do lote no período
-                List<StockMovement> movements = stockMovementRepository
-                        .findByTenantIdAndLotIdOrderByCreatedAtAsc(tenantId, lot.getId())
-                        .stream()
-                        .filter(m -> !m.getCreatedAt().isBefore(from) && m.getCreatedAt().isBefore(to))
-                        .collect(Collectors.toList());
+            ProductWms product = productById.get(lot.getProduct().getId());
+            if (product == null) continue;
 
-                if (movements.isEmpty()) continue;
+            int quantityReceived = movements.stream()
+                    .filter(m -> m.getType() == MovementType.INBOUND)
+                    .mapToInt(StockMovement::getQuantity).sum();
 
-                int quantityReceived   = movements.stream()
-                        .filter(m -> m.getType() == MovementType.INBOUND)
-                        .mapToInt(StockMovement::getQuantity).sum();
-                int quantityExpedited  = movements.stream()
-                        .filter(m -> m.getType() == MovementType.SHIPPING
-                                  || m.getType() == MovementType.OUTBOUND)
-                        .mapToInt(StockMovement::getQuantity).sum();
+            int quantityExpedited = movements.stream()
+                    .filter(m -> m.getType() == MovementType.SHIPPING
+                              || m.getType() == MovementType.OUTBOUND)
+                    .mapToInt(StockMovement::getQuantity).sum();
 
-                // Saldo atual do lote
-                int currentBalance = stockItemRepository
-                        .findByFilters(tenantId, product.getId(), null, lot.getId(), warehouseId)
-                        .stream().mapToInt(StockItem::getQuantityAvailable).sum();
+            int currentBalance = balanceByLotId.getOrDefault(lot.getId(), 0);
 
-                Instant receivedAt = movements.stream()
-                        .filter(m -> m.getType() == MovementType.INBOUND)
-                        .map(StockMovement::getCreatedAt)
-                        .min(Comparator.naturalOrder())
-                        .orElse(lot.getCreatedAt());
+            Instant receivedAt = movements.stream()
+                    .filter(m -> m.getType() == MovementType.INBOUND)
+                    .map(StockMovement::getCreatedAt)
+                    .min(Comparator.naturalOrder())
+                    .orElse(lot.getCreatedAt());
 
-                rows.add(new AnvisaRow(
-                        product.getId(),
-                        product.getSku(),
-                        product.getName(),
-                        lot.getLotNumber(),
-                        lot.getExpiryDate(),
-                        quantityReceived,
-                        quantityExpedited,
-                        currentBalance,
-                        lot.getSupplierId(),
-                        receivedAt
-                ));
-            }
+            rows.add(new AnvisaRow(
+                    product.getId(),
+                    product.getSku(),
+                    product.getName(),
+                    lot.getLotNumber(),
+                    lot.getExpiryDate(),
+                    quantityReceived,
+                    quantityExpedited,
+                    currentBalance,
+                    lot.getSupplierId(),
+                    receivedAt
+            ));
         }
 
         return rows;

@@ -90,8 +90,8 @@ class ReportServiceTest {
         var row = new FichaEstoqueRow(UUID.randomUUID(), "SKU-001", "Produto A",
                 warehouseId, "2026-01-01", "2026-01-31", 100, 50, 30, 5, 125);
 
-        when(warehouseRepository.findByIdAndTenantId(warehouseId, tenantId))
-                .thenReturn(Optional.of(Warehouse.builder().build()));
+        when(warehouseRepository.findById(warehouseId))
+                .thenReturn(Optional.of(Warehouse.builder().tenantId(tenantId).build()));
         when(fichaEstoqueGenerator.generate(any(), any(), any(), any(), any()))
                 .thenReturn(List.of(row));
         when(jsonStrategy.export(any(), any(), any(), any())).thenReturn(new byte[0]);
@@ -118,8 +118,8 @@ class ReportServiceTest {
                         10, UUID.randomUUID(), java.time.Instant.now())
         ));
 
-        when(warehouseRepository.findByIdAndTenantId(warehouseId, tenantId))
-                .thenReturn(Optional.of(Warehouse.builder().build()));
+        when(warehouseRepository.findById(warehouseId))
+                .thenReturn(Optional.of(Warehouse.builder().tenantId(tenantId).build()));
         when(movimentacoesGenerator.generate(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(page);
 
@@ -161,8 +161,8 @@ class ReportServiceTest {
         var anvisaRow = new AnvisaRow(UUID.randomUUID(), "SKU-ANVISA", "Med A",
                 "LOT-A", null, 100, 30, 70, null, java.time.Instant.now());
 
-        when(warehouseRepository.findByIdAndTenantId(warehouseId, tenantId))
-                .thenReturn(Optional.of(Warehouse.builder().build()));
+        when(warehouseRepository.findById(warehouseId))
+                .thenReturn(Optional.of(Warehouse.builder().tenantId(tenantId).build()));
         when(anvisaReportGenerator.generate(any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(anvisaRow));
         when(jsonStrategy.export(any(), any(), any(), any())).thenReturn(new byte[0]);
@@ -279,8 +279,8 @@ class ReportServiceTest {
         when(scheduleRepository.save(any())).thenReturn(schedule);
 
         // Para a geração do relatório interno não explodir
-        when(warehouseRepository.findByIdAndTenantId(eq(warehouseId), eq(tenantId)))
-                .thenReturn(Optional.of(Warehouse.builder().build()));
+        when(warehouseRepository.findById(eq(warehouseId)))
+                .thenReturn(Optional.of(Warehouse.builder().tenantId(tenantId).build()));
         when(fichaEstoqueGenerator.generate(any(), any(), any(), any(), any()))
                 .thenReturn(List.of());
         when(jsonStrategy.export(any(), any(), any(), any())).thenReturn(new byte[0]);

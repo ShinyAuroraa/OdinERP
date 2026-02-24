@@ -1,0 +1,154 @@
+schema: 1
+story: "7.1"
+story_id: "STORY-WMS-7.1"
+story_title: "Relatórios Regulatórios — Ficha de Estoque, ANVISA, Rastreabilidade & Movimentações"
+gate: CONCERNS
+date: "2026-02-24"
+reviewer: "Quinn"
+commit_reviewed: "fc05fa0"
+status_reason: >
+  Implementation is functionally complete across all 8 ACs. Strategy pattern for export
+  formats (JSON/PDF/Excel/XML) is well-structured with SXSSFWorkbook(100) streaming for
+  Excel and explicit OpenPDF imports (no wildcard, no java.util.List conflict). Migration
+  V14 is correct and consistent with existing schema patterns. All 4 report generators
+  produce correct output. Multi-tenant isolation enforced at all layers. Scheduler runs
+  on fixedDelay=60_000 as specified; race condition risk documented and deferred (v1 scope).
+  20 tests (U1-U10 + I1-I10) pass with BUILD SUCCESS. Four non-blocking concerns identified:
+  (1) dead code in deleteSchedule — redundant tenant guard after findByIdAndTenantId;
+  (2) AnvisaReportGenerator uses O(N×M) query pattern (N products × M lots) — potential
+  performance issue for tenants with many ANVISA products; (3) invalid warehouseId throws
+  AccessDeniedException (403) rather than differentiating from a genuinely wrong-tenant
+  403; (4) test suite has gaps — no 403 role enforcement test, no DELETE schedule test,
+  no integration test for ANVISA with vigilanciaSanitaria=true data. All are non-blocking
+  for Wave 7 completion.
+
+checks:
+  code_review: PASS
+  unit_tests: PASS
+  acceptance_criteria: PASS
+  no_regressions: PASS
+  performance_architecture: PASS
+  security: PASS
+  documentation: PASS
+
+top_issues:
+  - id: QA-7.1-001
+    severity: low
+    category: code
+    finding: >
+      ReportScheduleService.deleteSchedule() contains dead code. The method calls
+      repository.findByIdAndTenantId(id, tenantId) which only returns a schedule if
+      it belongs to the tenant. The subsequent guard `if (!schedule.getTenantId().equals(tenantId))`
+      can never be true — the schedule retrieved already satisfies the tenant filter.
+      The 403 AccessDeniedException in that branch is unreachable. In practice the only
+      observable behavior is a ResourceNotFoundException (404) for ids not found or
+      belonging to other tenants.
+    recommendation: >
+      Remove the redundant if-block after findByIdAndTenantId. The orElseThrow already
+      handles both "not found" and "wrong tenant" cases. If semantic distinction between
+      404 (not found) and 403 (wrong tenant) is desired in a future iteration, split the
+      query into findById + explicit tenant check.
+
+  - id: QA-7.1-002
+    severity: medium
+    category: performance
+    finding: >
+      AnvisaReportGenerator.generate() executes O(N×M) queries: one findByTenantIdAndProductId
+      per vigilância product, then one findByTenantIdAndLotIdOrderByCreatedAtAsc + one
+      stockItemRepository.findByFilters per lot. For a tenant with 20 ANVISA products
+      each having 50 lots, this is 20 (lots) + 1000 (movements) + 1000 (stock) = 2021
+      queries per report call. The existing @Transactional(readOnly=true) wraps everything
+      in one connection but does not batch the queries. This is the most significant
+      architectural concern of the story — the risk was documented in the story (Apache POI
+      memory) but this specific query pattern was not.
+    recommendation: >
+      Refactor to use a single bulk query joining ProductWms + Lot + StockMovement + StockItem
+      for the date range and tenant, then group in Java. Alternatively, add a JPQL query
+      on LotRepository that fetches lots with their movements in one shot via JOIN FETCH.
+      Acceptable as tech debt (QA-7.1-TD-002) given current dataset sizes.
+
+  - id: QA-7.1-003
+    severity: low
+    category: code
+    finding: >
+      ReportService.validateWarehouseTenant() throws AccessDeniedException (HTTP 403) when
+      the warehouseId does not exist at all (not just when it belongs to another tenant).
+      The message "Warehouse não pertence ao tenant ou não existe" acknowledges both cases
+      but always maps to 403. AC1 specifies "warehouseId inválido → 400 Bad Request" for
+      a non-existent warehouse, which should be a distinct response from 403 (cross-tenant
+      access attempt). Exposing whether a warehouse exists to a cross-tenant caller via
+      different status codes is a minor IDOR consideration, so the current unified 403
+      approach is security-conservative but violates the AC spec for the "does not exist"
+      case.
+    recommendation: >
+      Consider splitting: findById().isEmpty() → throw BusinessException (400) for clearly
+      invalid UUIDs; findByIdAndTenantId().isEmpty() when ID exists → AccessDeniedException
+      (403). If IDOR concern is a priority (hiding existence from unauthorized callers), keep
+      unified 403 and update the AC text to reflect that decision.
+
+  - id: QA-7.1-004
+    severity: low
+    category: tests
+    finding: >
+      Test coverage gaps in both unit and integration suites: (a) no test verifies that
+      WMS_OPERATOR role is blocked from fichaEstoque/anvisa/rastreabilidade endpoints
+      (403 role enforcement); (b) no integration test for DELETE /schedules/{id};
+      (c) no integration test for ANVISA with at least one product where
+      vigilanciaSanitaria=true and movements in the period — I8 only tests the empty-list
+      path; (d) no test for period > 365 days via the HTTP layer (U8 tests service layer
+      only); (e) no unit test for invalid ExportFormat string → 400.
+    recommendation: >
+      Add I11: fichaEstoque with ROLE_WMS_OPERATOR → 403; I12: DELETE schedule → 204;
+      I13: ANVISA with vigilanciaSanitaria product + movements → non-empty list. These
+      are low-priority additions; address in a micro-task or next wave.
+
+observations:
+  - "All 4 export formats produce correct Content-Type and Content-Disposition headers per AC5. XML correctly omits Content-Disposition (spec does not require it)."
+  - "PdfExportStrategy uses explicit OpenPDF imports (no wildcard com.lowagie.text.*) — java.util.List conflict correctly avoided per Dev Notes debug log."
+  - "ExcelExportStrategy uses SXSSFWorkbook(100) streaming as documented in story risks — correct mitigation for large datasets."
+  - "XmlExportStrategy escapeXml() handles all 5 XML special characters (&, <, >, \", ') — well-formed output guaranteed."
+  - "SchedulingConfig.java correctly enables @EnableScheduling as a separate @Configuration class — not polluting WmsServiceApplication."
+  - "Strategy map built via @PostConstruct + List<ReportExportStrategy> Spring injection — correct pattern for extensible strategy resolution."
+  - "StockMovementRepository.findByTenantIdAndWarehouseIdAndPeriod JPQL uses LEFT JOIN FETCH for sourceLocation and destinationLocation — N+1 avoided for movement queries."
+  - "RastreabilidadeGenerator correctly throws ResourceNotFoundException (404) for unknown lot and AccessDeniedException (403) for cross-tenant lot."
+  - "ReportScheduleRepository.findDueSchedules JPQL uses partial index hint (active=true) matching the idx_report_schedules_next_execution index — query plan aligned."
+  - "CronExpression.parse() from Spring (6-field) used correctly with clear error message documenting Quartz pattern limitations (L, W, # not supported)."
+  - "FichaEstoqueGenerator.saldoFinal always equals saldoAtual mathematically (current stock = opening + inbound - outbound + adjustments). The Math.max(0, saldoInicial) safety clamp is pragmatic for data inconsistencies but breaks the arithmetic invariant for saldoFinal display in edge cases."
+
+tech_debt:
+  - id: QA-7.1-TD-001
+    description: >
+      deleteSchedule() dead code — redundant if (!schedule.getTenantId().equals(tenantId))
+      after findByIdAndTenantId. Safe to remove.
+    priority: low
+
+  - id: QA-7.1-TD-002
+    description: >
+      AnvisaReportGenerator O(N×M) query pattern. Acceptable for v1 with typical dataset
+      sizes but should be refactored to bulk JOIN query when ANVISA product counts grow.
+      Consider adding a composite query: get all lots for all vigilância products in one
+      query, then bulk-fetch movements.
+    priority: medium
+
+  - id: QA-7.1-TD-003
+    description: >
+      Missing integration tests: (a) 403 role enforcement for operator role on restricted
+      endpoints; (b) DELETE /schedules/{id}; (c) ANVISA with vigilanciaSanitaria=true
+      product with movements; (d) period > 365 days via HTTP layer.
+    priority: low
+
+  - id: QA-7.1-TD-004
+    description: >
+      Inherited from codebase: report_schedules.warehouse_id has no FK constraint to
+      warehouses table. Consistent with existing codebase FK pattern (no FK enforcement
+      for UUID references in this service) but creates referential integrity gap.
+    priority: low
+
+  - id: QA-7.1-TD-005
+    description: >
+      K8s multi-instance scheduler race condition: @Scheduled(fixedDelay=60_000) can
+      execute findDueSchedules() on multiple pods simultaneously. The story documents
+      ShedLock / pessimistic UPDATE...WHERE as mitigation but neither is implemented.
+      Before horizontal scaling, add ShedLock or an UPDATE...WHERE next_execution_at <= NOW
+      optimistic-lock approach.
+    priority: low
