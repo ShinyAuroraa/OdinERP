@@ -12,9 +12,10 @@
   "bruteForceProtected": false,
   "roles": {
     "realm": [
-      { "name": "ROLE_WMS_ADMIN",    "composite": false },
-      { "name": "ROLE_WMS_OPERATOR", "composite": false },
-      { "name": "ROLE_FINANCE",      "composite": false }
+      { "name": "WMS_ADMIN",    "composite": false },
+      { "name": "WMS_OPERATOR", "composite": false },
+      { "name": "WMS_VIEWER",   "composite": false },
+      { "name": "FINANCE",      "composite": false }
     ]
   },
   "clients": [
@@ -38,7 +39,23 @@
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "tenant-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "tenant_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     },
     {
       "clientId": "wms-service",
@@ -60,6 +77,9 @@
       "firstName": "Admin",
       "lastName": "WMS",
       "emailVerified": true,
+      "attributes": {
+        "tenant_id": ["tenant-001"]
+      },
       "credentials": [
         {
           "type": "password",
@@ -67,7 +87,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["ROLE_WMS_ADMIN", "ROLE_WMS_OPERATOR", "ROLE_FINANCE"]
+      "realmRoles": ["WMS_ADMIN", "WMS_OPERATOR", "WMS_VIEWER", "FINANCE"]
     },
     {
       "username": "operador",
@@ -76,6 +96,9 @@
       "firstName": "Operador",
       "lastName": "WMS",
       "emailVerified": true,
+      "attributes": {
+        "tenant_id": ["tenant-001"]
+      },
       "credentials": [
         {
           "type": "password",
@@ -83,7 +106,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["ROLE_WMS_OPERATOR"]
+      "realmRoles": ["WMS_OPERATOR", "WMS_VIEWER"]
     },
     {
       "username": "financeiro",
@@ -92,6 +115,9 @@
       "firstName": "Financeiro",
       "lastName": "WMS",
       "emailVerified": true,
+      "attributes": {
+        "tenant_id": ["tenant-001"]
+      },
       "credentials": [
         {
           "type": "password",
@@ -99,7 +125,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["ROLE_FINANCE"]
+      "realmRoles": ["FINANCE", "WMS_VIEWER"]
     }
   ]
 }
