@@ -26,6 +26,9 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
 
+    // HTTP client — RestClient para Keycloak Admin REST API
+    implementation("org.springframework:spring-web")
+
     // Persistence
     implementation(libs.spring.data.jpa)
     implementation(libs.spring.data.redis)

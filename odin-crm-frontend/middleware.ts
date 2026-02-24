@@ -2,9 +2,11 @@ import { auth } from '@/lib/auth';
 
 export default auth((req) => {
   const isAuthenticated = !!req.auth;
-  const isDashboard = req.nextUrl.pathname.startsWith('/dashboard');
+  const { pathname } = req.nextUrl;
 
-  if (!isAuthenticated && isDashboard) {
+  const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/admin');
+
+  if (!isAuthenticated && isProtected) {
     return Response.redirect(new URL('/login', req.url));
   }
 });

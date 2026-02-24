@@ -1,5 +1,6 @@
 package br.com.odin.crm.web;
 
+import br.com.odin.crm.infrastructure.persistence.audit.AuditLogJpaRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Smoke test — verifies the full Spring context loads without errors.
  *
- * Infrastructure autoconfiguration (DataSource, JPA, Kafka, Redis, OAuth2)
+ * <p>Infrastructure autoconfiguration (DataSource, JPA, Kafka, Redis, OAuth2)
  * is excluded via spring.autoconfigure.exclude so this test runs without
  * live Docker services. Testcontainers integration is added in Story 1.2.
  */
@@ -37,6 +38,10 @@ class CrmApplicationSmokeTest {
     // SecurityConfig requires a JwtDecoder; mock it since OAuth2 auto-config is excluded in this smoke test
     @MockBean
     private JwtDecoder jwtDecoder;
+
+    // JPA auto-config is excluded; UserAdminService requires AuditLogJpaRepository — mock it
+    @MockBean
+    private AuditLogJpaRepository auditLogRepository;
 
     @Autowired
     private ApplicationContext context;

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useCurrentUser } from '@/lib/hooks/use-current-user';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -12,12 +13,18 @@ const navItems = [
   { href: '/atividades', label: 'Atividades' },
 ];
 
+const adminNavItems = [{ href: '/admin/users', label: 'Usuários' }];
+
 interface SidebarProps {
   collapsed: boolean;
 }
 
 export function Sidebar({ collapsed }: SidebarProps) {
   const pathname = usePathname();
+  const { roles } = useCurrentUser();
+  const isAdmin = roles.includes('crm-admin');
+
+  const allItems = isAdmin ? [...navItems, ...adminNavItems] : navItems;
 
   return (
     <aside
@@ -33,7 +40,7 @@ export function Sidebar({ collapsed }: SidebarProps) {
       </div>
 
       <nav className="flex-1 py-4 space-y-1 px-2">
-        {navItems.map((item) => (
+        {allItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}

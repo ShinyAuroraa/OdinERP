@@ -8,12 +8,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Validates that the Flyway migration V1__create_schema.sql ran correctly.
+ * Validates that Flyway migrations ran correctly.
  *
  * <p>Verifies: pgcrypto extension, pg_trgm extension, set_updated_at() function,
- * and Flyway schema history.
+ * user_profiles table (V9), audit_logs table (V10), and Flyway schema history.
  */
-@DisplayName("V1 Schema Integration Test")
+@DisplayName("Schema Integration Tests")
 class SchemaIntegrationTest extends AbstractRepositoryIntegrationTest {
 
     @Autowired
@@ -47,11 +47,29 @@ class SchemaIntegrationTest extends AbstractRepositoryIntegrationTest {
     }
 
     @Test
-    @DisplayName("Flyway must have applied exactly 1 migration (V1)")
-    void flywayAppliedV1Migration() {
+    @DisplayName("Flyway latest migration must be V10")
+    void flywayLatestMigrationIsV10() {
         String version = jdbcTemplate.queryForObject(
                 "SELECT version FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 1",
                 String.class);
-        assertThat(version).isEqualTo("1");
+        assertThat(version).isEqualTo("10");
+    }
+
+    @Test
+    @DisplayName("V9 — user_profiles table must exist")
+    void userProfilesTableExists() {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'user_profiles'",
+                Integer.class);
+        assertThat(count).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("V10 — audit_logs table must exist")
+    void auditLogsTableExists() {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'audit_logs'",
+                Integer.class);
+        assertThat(count).isEqualTo(1);
     }
 }
