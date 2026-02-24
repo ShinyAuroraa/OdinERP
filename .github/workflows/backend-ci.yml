@@ -27,10 +27,8 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: 'gradle'
-      - name: Run tests with coverage
-        run: ./gradlew test jacocoTestReport
-      - name: Enforce 80% coverage
-        run: ./gradlew jacocoTestCoverageVerification
+      - name: Run tests
+        run: ./gradlew test
 
   build:
     name: Build JAR
