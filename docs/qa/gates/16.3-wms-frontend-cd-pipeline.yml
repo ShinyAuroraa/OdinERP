@@ -1,0 +1,29 @@
+storyId: STORY-FE-16.3
+storyTitle: "GitHub Actions CD Pipeline (Docker build + push ghcr.io + kubectl deploy)"
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+checks:
+  code_review:
+    status: PASS
+    notes: "cd.yml bem estruturado: workflow_run aguarda CI verde, login ghcr.io via GITHUB_TOKEN, docker/build-push-action@v5 com cache GHA mode=max, tags SHA + latest, deploy K8s condicional."
+  acceptance_criteria:
+    status: PASS
+    notes: "AC1-7 atendidos: trigger workflow_run, login GITHUB_TOKEN, build+push SHA+latest, registry ghcr.io, build-args via vars.*, cache GHA, deploy condicional secrets.KUBECONFIG."
+  security:
+    status: PASS
+    notes: "GITHUB_TOKEN para ghcr.io (sem PAT extra). KUBECONFIG base64-decoded para /tmp e removido após uso. permissions: packages: write mínimo necessário. Deploy condicional evita falhas sem cluster."
+  ci_cd_best_practices:
+    status: PASS
+    notes: "actions pinadas @v3/@v4/@v5. Cache Docker modo max reduz rebuild. workflow_run garante ordem CI → CD. Checkout do SHA correto (workflow_run.head_sha)."
+  documentation:
+    status: PASS
+    notes: "Story 16.3 completa. Comentário no deploy step explica configuração do KUBECONFIG. infra/k8s/README.md orienta sobre export do kubeconfig."
+
+issues: []
+
+summary: >
+  Story 16.3 implementada com sucesso. CD pipeline GitHub Actions que aguarda CI verde,
+  builda imagem Docker com cache GHA, pusha para ghcr.io com tags SHA + latest,
+  e faz deploy K8s condicional. Seguro e production-ready.

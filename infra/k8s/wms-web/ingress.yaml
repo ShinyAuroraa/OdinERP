@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wms-web
+  namespace: wms
+  labels:
+    app: wms-web
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: wms.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wms-web
+                port:
+                  number: 80
+  # Uncomment for TLS (requires cert-manager or manual secret):
+  # tls:
+  #   - hosts:
+  #       - wms.local
+  #     secretName: wms-web-tls

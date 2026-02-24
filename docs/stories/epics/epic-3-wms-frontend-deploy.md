@@ -9,11 +9,11 @@ createdBy: "@pm (Morgan)"
 createdAt: "2026-02-24"
 version: "1.0.0"
 storiesTotal: 5
-storiesCompleted: 2
+storiesCompleted: 4
 wavesTotal: 3
-wavesCompleted: [1]
+wavesCompleted: [1, 2]
 wavesInProgress: []
-wavesNext: [2]
+wavesNext: [3]
 ---
 
 # Epic 3 — WMS Frontend Deploy: Docker + CI/CD + Kubernetes
@@ -62,8 +62,8 @@ NEXTAUTH_URL=https://wms.odin.internal
 |---|-------|------|-------------|--------|
 | 16.1 | Dockerfile Multi-Stage + Docker Compose (dev + prod) | 1 | M | ✅ Done |
 | 16.2 | GitHub Actions CI Pipeline (lint + typecheck + test + build + CodeRabbit) | 1 | M | ✅ Done |
-| 16.3 | GitHub Actions CD Pipeline (Docker build + push ghcr.io + deploy K8s) | 2 | L | Pending |
-| 16.4 | Kubernetes Manifests (Deployment + Service + Ingress + ConfigMap + Secret) | 2 | M | Pending |
+| 16.3 | GitHub Actions CD Pipeline (Docker build + push ghcr.io + deploy K8s) | 2 | L | ✅ Done |
+| 16.4 | Kubernetes Manifests (Deployment + Service + Ingress + ConfigMap + Secret) | 2 | M | ✅ Done |
 | 16.5 | Health Endpoints + Observabilidade (Prometheus metrics + readiness/liveness) | 3 | S | Pending |
 
 **Total: 5 stories, 3 waves**

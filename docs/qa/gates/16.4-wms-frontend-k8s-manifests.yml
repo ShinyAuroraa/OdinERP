@@ -1,0 +1,33 @@
+storyId: STORY-FE-16.4
+storyTitle: "Kubernetes Manifests (Deployment + Service + Ingress + ConfigMap + Secret)"
+reviewedAt: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+checks:
+  code_review:
+    status: PASS
+    notes: "7 manifestos K8s corretos: namespace wms, configmap com vars não-sensíveis, secret apenas template com instruções claras, deployment 2 réplicas rolling update, service ClusterIP, ingress nginx wms.local, kustomization agrupa tudo."
+  acceptance_criteria:
+    status: PASS
+    notes: "AC1-7 atendidos: 7 arquivos Kustomize, deployment 2 réplicas com rolling update, configmap vars não-sensíveis, secret template sem valores, ingress wms.local, kustomization.yaml válido, README com quick-start kind."
+  security:
+    status: PASS
+    notes: "Secret apenas template — sem valores hardcoded. Instrução de criar com kubectl create secret. resource limits definidos (512Mi/500m). imagePullPolicy: Always para garantir imagem atualizada."
+  k8s_best_practices:
+    status: PASS
+    notes: "Rolling update zero-downtime (maxSurge:1, maxUnavailable:0). Labels app.kubernetes.io/ seguindo convenção. Namespace isolado. readiness/liveness probes configuradas (probes atualizadas em Story 16.5 para /api/health)."
+  documentation:
+    status: PASS
+    notes: "infra/k8s/README.md completo: pré-requisitos, 6 passos, estrutura de arquivos. Comentários no deployment.yaml sobre Story 16.5. TLS comentado para produção futura."
+
+issues:
+  - severity: low
+    category: docs
+    description: "Probes usam / temporariamente — Story 16.5 atualizará para /api/health"
+    recommendation: "Implementar Story 16.5 em seguida (Wave 3)"
+
+summary: >
+  Story 16.4 implementada com sucesso. 7 manifestos Kubernetes com Kustomize:
+  namespace, configmap, secret template, deployment rolling update, service ClusterIP,
+  ingress nginx. README com quick-start kind local. EPIC-FE-002 Wave 2 completa.

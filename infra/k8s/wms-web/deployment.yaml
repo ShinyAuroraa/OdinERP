@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wms-web
+  namespace: wms
+  labels:
+    app: wms-web
+    app.kubernetes.io/name: wms-web
+    app.kubernetes.io/part-of: odin-erp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: wms-web
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: wms-web
+    spec:
+      containers:
+        - name: wms-web
+          image: ghcr.io/shinuauroraa/odin-wms-web:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: wms-web-config
+            - secretRef:
+                name: wms-web-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          # Story 16.5 will update these probes to use /api/health
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+      restartPolicy: Always

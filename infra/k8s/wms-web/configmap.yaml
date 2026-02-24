@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wms-web-config
+  namespace: wms
+  labels:
+    app: wms-web
+data:
+  # Internal backend URL (server-side Next.js rewrite proxy)
+  WMS_API_URL: "http://wms-service.wms.svc.cluster.local:8080"
+
+  # Keycloak (client-side — baked at build-time via ARG, override at runtime if needed)
+  NEXT_PUBLIC_KEYCLOAK_URL: "http://keycloak.wms.svc.cluster.local:8180"
+  NEXT_PUBLIC_KEYCLOAK_REALM: "odin"
+  NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: "wms-web"
+
+  # Next.js
+  NODE_ENV: "production"
+  NEXT_TELEMETRY_DISABLED: "1"
+  PORT: "3000"
+  HOSTNAME: "0.0.0.0"
