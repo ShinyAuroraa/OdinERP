@@ -12,7 +12,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.support.CronExpression;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,10 +67,6 @@ public class ReportScheduleService {
     public void deleteSchedule(UUID id, UUID tenantId) {
         ReportSchedule schedule = repository.findByIdAndTenantId(id, tenantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado: " + id));
-
-        if (!schedule.getTenantId().equals(tenantId)) {
-            throw new AccessDeniedException("Agendamento pertence a outro tenant");
-        }
 
         repository.delete(schedule);
     }

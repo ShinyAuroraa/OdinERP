@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Testes de integração para relatórios regulatórios — I1–I10.
+ * Testes de integração para relatórios regulatórios — I1–I13.
  */
 @AutoConfigureMockMvc
 class ReportControllerIntegrationTest extends AbstractIntegrationTest {
@@ -255,6 +255,74 @@ class ReportControllerIntegrationTest extends AbstractIntegrationTest {
                         .param("dataInicio", "2026-01-01")
                         .param("dataFim", "2026-01-31"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    // -------------------------------------------------------------------------
+    // I11 — fichaEstoque com ROLE_WMS_OPERATOR → 403 (role insuficiente)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void I11_fichaEstoque_withOperatorRole_returns403() throws Exception {
+        mockMvc.perform(withOperator(get("/api/v1/reports/ficha-estoque")
+                        .param("warehouseId", warehouse.getId().toString())
+                        .param("dataInicio", "2026-01-01")
+                        .param("dataFim", "2026-12-31")))
+                .andExpect(status().isForbidden());
+    }
+
+    // -------------------------------------------------------------------------
+    // I12 — deleteSchedule: agendamento existente → 204 No Content
+    // -------------------------------------------------------------------------
+
+    @Test
+    void I12_deleteSchedule_validId_returns204() throws Exception {
+        ReportSchedule schedule = scheduleRepository.save(ReportSchedule.builder()
+                .tenantId(tenantId)
+                .reportType(ReportType.FICHA_ESTOQUE)
+                .exportFormat(ExportFormat.PDF)
+                .cronExpression("0 0 8 * * MON")
+                .warehouseId(warehouse.getId())
+                .active(true)
+                .build());
+
+        mockMvc.perform(withAdmin(delete("/api/v1/reports/schedules/{id}", schedule.getId())))
+                .andExpect(status().isNoContent());
+    }
+
+    // -------------------------------------------------------------------------
+    // I13 — anvisa: produto com vigilanciaSanitaria=true e movimentos → lista não vazia
+    // -------------------------------------------------------------------------
+
+    @Test
+    void I13_anvisa_withVigilanciaProduct_returnsNonEmptyList() throws Exception {
+        ProductWms anvisaProduct = productWmsRepository.save(ProductWms.builder()
+                .tenantId(tenantId).productId(UUID.randomUUID())
+                .sku("SKU-ANVISA-" + tenantId).name("Medicamento Controlado")
+                .storageType(StorageType.DRY).controlsLot(true)
+                .controlsSerial(false).controlsExpiry(false)
+                .vigilanciaSanitaria(true).active(true).build());
+
+        Lot anvisaLot = lotRepository.save(Lot.builder()
+                .tenantId(tenantId).product(anvisaProduct)
+                .lotNumber("LOT-ANVISA-" + tenantId).active(true).build());
+
+        stockMovementRepository.save(StockMovement.builder()
+                .tenantId(tenantId).product(anvisaProduct).lot(anvisaLot)
+                .type(MovementType.INBOUND)
+                .destinationLocation(location)
+                .quantity(20).operatorId(UUID.randomUUID())
+                .referenceType(com.odin.wms.domain.enums.ReferenceType.RECEIVING_NOTE)
+                .referenceId(UUID.randomUUID()).build());
+
+        mockMvc.perform(withSupervisor(get("/api/v1/reports/anvisa")
+                        .param("warehouseId", warehouse.getId().toString())
+                        .param("dataInicio", "2026-01-01")
+                        .param("dataFim", "2026-12-31")))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].sku").value("SKU-ANVISA-" + tenantId))
+                .andExpect(jsonPath("$[0].quantityReceived").value(20));
     }
 
     // -------------------------------------------------------------------------

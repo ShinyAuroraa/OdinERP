@@ -32,6 +32,27 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, UU
     // -------------------------------------------------------------------------
 
     /**
+     * Busca em lote movimentos de múltiplos lotes num período.
+     * Substitui N*M queries individuais por 1 query com IN clause.
+     * Usado em AnvisaReportGenerator para eliminar padrão N+1 (QA-7.1-TD-002).
+     */
+    @Query("""
+            SELECT m FROM StockMovement m
+            LEFT JOIN FETCH m.product p
+            LEFT JOIN FETCH m.lot l
+            WHERE m.tenantId = :tenantId
+              AND m.lot.id IN :lotIds
+              AND m.createdAt >= :from
+              AND m.createdAt < :to
+            ORDER BY m.createdAt ASC
+            """)
+    List<StockMovement> findByTenantIdAndLotIdInAndCreatedAtBetween(
+            @Param("tenantId") UUID tenantId,
+            @Param("lotIds") List<UUID> lotIds,
+            @Param("from") Instant from,
+            @Param("to") Instant to);
+
+    /**
      * Busca movimentos de um warehouse no período (join com hierarquia de localização).
      * Inclui movimentos onde a localização de origem OU destino pertence ao warehouse.
      */

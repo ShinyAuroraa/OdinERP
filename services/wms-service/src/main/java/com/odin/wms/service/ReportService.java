@@ -143,9 +143,13 @@ public class ReportService {
         if (warehouseId == null) {
             throw new IllegalArgumentException("warehouseId é obrigatório");
         }
-        warehouseRepository.findByIdAndTenantId(warehouseId, tenantId)
-                .orElseThrow(() -> new AccessDeniedException(
-                        "Warehouse não pertence ao tenant ou não existe: " + warehouseId));
+        var warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Warehouse não encontrado: " + warehouseId));
+        if (!warehouse.getTenantId().equals(tenantId)) {
+            throw new AccessDeniedException(
+                    "Warehouse não pertence ao tenant: " + warehouseId);
+        }
     }
 
     private ResponseEntity<?> buildResponse(
