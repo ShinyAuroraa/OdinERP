@@ -444,7 +444,7 @@ class PickingServiceTest {
         when(stockItemRepository.findByTenantIdAndLocationIdAndProductIdAndLotIdIsNull(
                 TENANT_ID, LOCATION_ID, PRODUCT_ID))
                 .thenReturn(Optional.of(si));
-        when(stockMovementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(stockMovementRepository.saveAll(any())).thenReturn(List.of());
         when(auditLogRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(pickingOrderRepository.save(any())).thenAnswer(inv -> {
             PickingOrder o = inv.getArgument(0);
@@ -488,7 +488,7 @@ class PickingServiceTest {
         when(stockItemRepository.findByTenantIdAndLocationIdAndProductIdAndLotIdIsNull(
                 TENANT_ID, loc2, prod2))
                 .thenReturn(Optional.of(si2));
-        when(stockMovementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(stockMovementRepository.saveAll(any())).thenReturn(List.of());
         when(auditLogRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(pickingOrderRepository.save(any())).thenAnswer(inv -> {
             PickingOrder o = inv.getArgument(0);
@@ -522,7 +522,7 @@ class PickingServiceTest {
         when(stockItemRepository.findByTenantIdAndLocationIdAndProductIdAndLotIdIsNull(
                 TENANT_ID, LOCATION_ID, PRODUCT_ID))
                 .thenReturn(Optional.of(si));
-        when(stockMovementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(stockMovementRepository.saveAll(any())).thenReturn(List.of());
         when(auditLogRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(pickingOrderRepository.save(any())).thenAnswer(inv -> {
             PickingOrder o = inv.getArgument(0);
@@ -583,7 +583,7 @@ class PickingServiceTest {
 
         pickingService.cancelOrder(ORDER_ID, new CancelPickingOrderRequest("sem reserva"));
 
-        verify(stockItemRepository, never()).save(any());
+        verify(stockItemRepository, never()).saveAll(any());
         verify(stockBalanceService, never()).evictAll();
     }
 
@@ -625,7 +625,7 @@ class PickingServiceTest {
         when(stockItemRepository.findByTenantIdAndLocationIdAndProductIdAndLotIdIsNull(
                 TENANT_ID, LOCATION_ID, PRODUCT_ID))
                 .thenReturn(Optional.of(si));
-        when(stockMovementRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(stockMovementRepository.saveAll(any())).thenReturn(List.of());
         when(auditLogRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(pickingOrderRepository.save(any())).thenAnswer(inv -> {
             PickingOrder o = inv.getArgument(0);
