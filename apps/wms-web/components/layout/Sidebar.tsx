@@ -31,8 +31,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, implemented: false },
-  { label: 'Armazéns', href: '/warehouses', icon: Warehouse, implemented: false },
-  { label: 'Produtos', href: '/products', icon: Package, implemented: false },
+  { label: 'Armazéns', href: '/warehouses', icon: Warehouse, implemented: true },
+  { label: 'Produtos', href: '/products', icon: Package, implemented: true },
   { label: 'Recebimento', href: '/receiving', icon: Truck, implemented: false },
   { label: 'Putaway', href: '/putaway', icon: MapPin, implemented: false },
   { label: 'Estoque', href: '/stock', icon: BarChart3, implemented: false },
