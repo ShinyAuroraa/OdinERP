@@ -1,0 +1,81 @@
+storyId: STORY-FE-1.2
+epicId: EPIC-FE-001
+title: "Design System & Componentes Base"
+reviewDate: "2026-02-24"
+reviewedBy: "@qa (Quinn)"
+verdict: PASS
+
+checks:
+  code_review:
+    status: PASS
+    notes: |
+      - 17 componentes shadcn/ui implementados manualmente (padrão estabelecido em Story 9.1) ✅
+      - DataTable genérico <TData> com TanStack Table v8 (getCoreRowModel, getSortedRowModel, getPaginationRowModel, getFilteredRowModel) ✅
+      - WmsFormField wrapper RHF: usa useFormContext() para pegar control sem prop drilling ✅
+      - StatusBadge: fallback 'secondary' para status desconhecidos (defensive) ✅
+      - ErrorBoundary: class component correto (React error boundaries só funcionam com classes) ✅
+      - Barrel export index.ts com todas as 7 exports ✅
+      - Sem any explícito, TypeScript strict respeitado ✅
+
+  unit_tests:
+    status: PASS
+    notes: |
+      61/61 testes passando (28 novos na Story 9.2)
+      - DataTable.test.tsx: 7 testes (render, empty, loading, searchable, filter, pagination)
+      - StatusBadge.test.tsx: 7 testes (green/yellow/red/orange/gray/fallback/snake_case)
+      - PageHeader.test.tsx: 4 testes (h1, description, no-description, actions slot)
+      - ConfirmDialog.test.tsx: 4 testes (open, onConfirm, destructive, closed)
+      - LoadingState.test.tsx: 4 testes (spinner, label, skeleton, page)
+      - FormField.test.tsx: 2 testes (label+asterisk, input rendered)
+
+  acceptance_criteria:
+    status: PASS
+    notes: |
+      AC1: 17 componentes shadcn/ui em components/ui/ ✅
+      AC2: DataTable (sort, paginação 10/25/50, busca global, loading, empty) ✅
+      AC3: WmsFormField (RHF + shadcn Form, erro automático, required asterisk) ✅
+      AC4: PageHeader (title H1, description, actions slot) ✅
+      AC5: StatusBadge (35 status → 5 grupos de cores, snake_case → Title Case) ✅
+      AC6: ConfirmDialog (AlertDialog, variante destructive com ícone alerta) ✅
+      AC7: LoadingState (spinner, skeleton rows, page completa) ✅
+      AC8: ErrorBoundary (class component, reset(), useErrorBoundary hook) ✅
+      AC9: barrel export components/shared/index.ts ✅
+      AC10: 61 testes (>12 novos) ✅
+      AC11: lint ✅ + typecheck ✅ + build ✅
+
+  security:
+    status: PASS
+    notes: |
+      - Sem inputs de usuário não sanitizados nos componentes base ✅
+      - ConfirmDialog não executa actions sem confirmação explícita ✅
+      - ErrorBoundary não expõe stack trace ao usuário (apenas message) ✅
+
+  performance:
+    status: PASS
+    notes: |
+      - DataTable: paginação client-side evita renderização de todas as linhas ✅
+      - Componentes shadcn/ui tree-shakeable (Radix UI primitives) ✅
+      - Bundle first load JS mantido abaixo de 200KB (101KB conforme build) ✅
+
+  documentation:
+    status: PASS
+    notes: |
+      - JSDoc em DataTable, WmsFormField, StatusBadge, ConfirmDialog, LoadingState, ErrorBoundary ✅
+      - Dev Notes com exemplos de uso TanStack Table v8 e React Hook Form + Zod ✅
+      - File List completo com 33 arquivos ✅
+
+issues: []
+
+summary:
+  verdict: PASS
+  score: "10/10 — Design system sólido e completo"
+  strengths:
+    - TanStack Table v8 com TypeScript genérico estritamente tipado
+    - WmsFormField evita prop drilling via useFormContext
+    - StatusBadge com fallback defensivo para status desconhecidos
+    - 28 novos testes cobrindo todos os estados dos componentes
+    - Todos os componentes acessíveis (ARIA via Radix UI primitives)
+  concerns: []
+  next_steps:
+    - "@devops: criar PR para Story 9.2 → main"
+    - "@sm: criar Story 10.1 (Gestão de Armazéns) + Story 10.2 (Gestão de Produtos)"
