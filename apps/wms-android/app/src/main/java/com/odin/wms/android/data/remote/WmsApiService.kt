@@ -2,10 +2,16 @@ package com.odin.wms.android.data.remote
 
 import com.odin.wms.android.data.remote.dto.CompleteReceivingDto
 import com.odin.wms.android.data.remote.dto.ConfirmItemRequestDto
+import com.odin.wms.android.data.remote.dto.ConfirmPickItemRequestDto
 import com.odin.wms.android.data.remote.dto.DivergenceRequestDto
+import com.odin.wms.android.data.remote.dto.LoadPackageRequestDto
 import com.odin.wms.android.data.remote.dto.PendingTasksDto
+import com.odin.wms.android.data.remote.dto.PickingItemDto
+import com.odin.wms.android.data.remote.dto.PickingTaskDto
 import com.odin.wms.android.data.remote.dto.ReceivingItemDto
 import com.odin.wms.android.data.remote.dto.ReceivingOrderDto
+import com.odin.wms.android.data.remote.dto.ShippingOrderDto
+import com.odin.wms.android.data.remote.dto.ShippingPackageDto
 import com.odin.wms.android.data.remote.dto.StockSummaryDto
 import com.odin.wms.android.data.remote.dto.WarehouseDto
 import retrofit2.Response
@@ -71,4 +77,59 @@ interface WmsApiService {
     suspend fun cancelReceivingOrder(
         @Path("id") orderId: String
     ): Response<Unit>
+
+    // --- Picking endpoints (Story 5.1) ---
+
+    @GET("api/v1/picking/orders")
+    suspend fun getPickingOrders(
+        @Query("status") status: String = "PICKING_PENDING",
+        @Query("tenantId") tenantId: String
+    ): Response<List<PickingTaskDto>>
+
+    @GET("api/v1/picking/orders/{id}")
+    suspend fun getPickingOrderDetail(
+        @Path("id") taskId: String
+    ): Response<PickingTaskDto>
+
+    @PUT("api/v1/picking/orders/{id}/items/{itemId}/pick")
+    suspend fun confirmItemPicked(
+        @Path("id") taskId: String,
+        @Path("itemId") itemId: String,
+        @Body request: ConfirmPickItemRequestDto
+    ): Response<PickingItemDto>
+
+    @PUT("api/v1/picking/orders/{id}/complete")
+    suspend fun completePickingOrder(
+        @Path("id") taskId: String
+    ): Response<PickingTaskDto>
+
+    @PUT("api/v1/picking/orders/{id}/cancel")
+    suspend fun cancelPickingOrder(
+        @Path("id") taskId: String
+    ): Response<Unit>
+
+    // --- Shipping endpoints (Story 5.3) ---
+
+    @GET("api/v1/shipping/orders")
+    suspend fun getShippingOrders(
+        @Query("status") status: String = "SHIPPING_PENDING",
+        @Query("tenantId") tenantId: String
+    ): Response<List<ShippingOrderDto>>
+
+    @GET("api/v1/shipping/orders/{id}")
+    suspend fun getShippingOrderDetail(
+        @Path("id") orderId: String
+    ): Response<ShippingOrderDto>
+
+    @PUT("api/v1/shipping/orders/{id}/packages/{packageId}/load")
+    suspend fun loadPackage(
+        @Path("id") orderId: String,
+        @Path("packageId") packageId: String,
+        @Body request: LoadPackageRequestDto
+    ): Response<ShippingPackageDto>
+
+    @POST("api/v1/shipping/orders/{id}/complete")
+    suspend fun completeShippingOrder(
+        @Path("id") orderId: String
+    ): Response<ShippingOrderDto>
 }

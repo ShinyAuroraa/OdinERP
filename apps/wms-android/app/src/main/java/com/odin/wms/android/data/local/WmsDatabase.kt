@@ -5,14 +5,24 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.odin.wms.android.data.local.dao.PendingTaskDao
+import com.odin.wms.android.data.local.dao.PickingItemDao
+import com.odin.wms.android.data.local.dao.PickingSyncQueueDao
+import com.odin.wms.android.data.local.dao.PickingTaskDao
 import com.odin.wms.android.data.local.dao.ReceivingItemDao
 import com.odin.wms.android.data.local.dao.ReceivingOrderDao
 import com.odin.wms.android.data.local.dao.ReceivingSyncQueueDao
+import com.odin.wms.android.data.local.dao.ShippingOrderDao
+import com.odin.wms.android.data.local.dao.ShippingPackageDao
 import com.odin.wms.android.data.local.dao.StockSummaryDao
 import com.odin.wms.android.data.local.entity.PendingTaskCacheEntity
+import com.odin.wms.android.data.local.entity.PickingItemCacheEntity
+import com.odin.wms.android.data.local.entity.PickingSyncQueueEntity
+import com.odin.wms.android.data.local.entity.PickingTaskCacheEntity
 import com.odin.wms.android.data.local.entity.ReceivingItemCacheEntity
 import com.odin.wms.android.data.local.entity.ReceivingOrderCacheEntity
 import com.odin.wms.android.data.local.entity.ReceivingSyncQueueEntity
+import com.odin.wms.android.data.local.entity.ShippingOrderCacheEntity
+import com.odin.wms.android.data.local.entity.ShippingPackageCacheEntity
 import com.odin.wms.android.data.local.entity.StockSummaryCacheEntity
 
 @Database(
@@ -21,9 +31,14 @@ import com.odin.wms.android.data.local.entity.StockSummaryCacheEntity
         PendingTaskCacheEntity::class,
         ReceivingOrderCacheEntity::class,
         ReceivingItemCacheEntity::class,
-        ReceivingSyncQueueEntity::class
+        ReceivingSyncQueueEntity::class,
+        PickingTaskCacheEntity::class,
+        PickingItemCacheEntity::class,
+        PickingSyncQueueEntity::class,
+        ShippingOrderCacheEntity::class,
+        ShippingPackageCacheEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class WmsDatabase : RoomDatabase() {
@@ -32,6 +47,11 @@ abstract class WmsDatabase : RoomDatabase() {
     abstract fun receivingOrderDao(): ReceivingOrderDao
     abstract fun receivingItemDao(): ReceivingItemDao
     abstract fun receivingSyncQueueDao(): ReceivingSyncQueueDao
+    abstract fun pickingTaskDao(): PickingTaskDao
+    abstract fun pickingItemDao(): PickingItemDao
+    abstract fun pickingSyncQueueDao(): PickingSyncQueueDao
+    abstract fun shippingOrderDao(): ShippingOrderDao
+    abstract fun shippingPackageDao(): ShippingPackageDao
 
     companion object {
         const val DATABASE_NAME = "wms_cache.db"
@@ -95,6 +115,99 @@ abstract class WmsDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Table: picking_tasks_cache
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS picking_tasks_cache (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        tenant_id TEXT NOT NULL,
+                        task_number TEXT NOT NULL,
+                        picking_order_id TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        corridor TEXT,
+                        priority INTEGER NOT NULL DEFAULT 0,
+                        total_items INTEGER NOT NULL,
+                        picked_items INTEGER NOT NULL DEFAULT 0,
+                        last_sync_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_picking_tasks_tenant_number
+                    ON picking_tasks_cache(tenant_id, task_number)
+                """.trimIndent())
+
+                // Table: picking_items_cache
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS picking_items_cache (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        task_id TEXT NOT NULL,
+                        tenant_id TEXT NOT NULL,
+                        product_code TEXT NOT NULL,
+                        gtin TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        expected_qty INTEGER NOT NULL,
+                        picked_qty INTEGER NOT NULL DEFAULT 0,
+                        position TEXT NOT NULL,
+                        lot_number TEXT,
+                        expiry_date TEXT,
+                        local_status TEXT NOT NULL DEFAULT 'PENDING'
+                    )
+                """.trimIndent())
+                // Index for FEFO query performance
+                database.execSQL("""
+                    CREATE INDEX IF NOT EXISTS idx_picking_items_expiry
+                    ON picking_items_cache(product_code, expiry_date)
+                """.trimIndent())
+
+                // Table: picking_sync_queue
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS picking_sync_queue (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        tenant_id TEXT NOT NULL,
+                        operation_type TEXT NOT NULL,
+                        task_id TEXT NOT NULL,
+                        item_id TEXT,
+                        payload TEXT NOT NULL,
+                        status TEXT NOT NULL DEFAULT 'PENDING',
+                        retry_count INTEGER NOT NULL DEFAULT 0,
+                        created_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
+
+                // Table: shipping_orders_cache
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS shipping_orders_cache (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        tenant_id TEXT NOT NULL,
+                        order_number TEXT NOT NULL,
+                        carrier TEXT NOT NULL,
+                        vehicle_plate TEXT,
+                        status TEXT NOT NULL,
+                        total_packages INTEGER NOT NULL,
+                        loaded_packages INTEGER NOT NULL DEFAULT 0,
+                        last_sync_at INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_shipping_orders_tenant_number
+                    ON shipping_orders_cache(tenant_id, order_number)
+                """.trimIndent())
+
+                // Table: shipping_packages_cache
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS shipping_packages_cache (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        order_id TEXT NOT NULL,
+                        tenant_id TEXT NOT NULL,
+                        tracking_code TEXT NOT NULL,
+                        weight REAL,
+                        status TEXT NOT NULL DEFAULT 'PENDING'
+                    )
+                """.trimIndent())
             }
         }
     }

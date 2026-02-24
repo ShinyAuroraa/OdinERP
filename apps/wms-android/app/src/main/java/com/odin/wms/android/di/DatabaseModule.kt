@@ -4,9 +4,14 @@ import android.content.Context
 import androidx.room.Room
 import com.odin.wms.android.data.local.WmsDatabase
 import com.odin.wms.android.data.local.dao.PendingTaskDao
+import com.odin.wms.android.data.local.dao.PickingItemDao
+import com.odin.wms.android.data.local.dao.PickingSyncQueueDao
+import com.odin.wms.android.data.local.dao.PickingTaskDao
 import com.odin.wms.android.data.local.dao.ReceivingItemDao
 import com.odin.wms.android.data.local.dao.ReceivingOrderDao
 import com.odin.wms.android.data.local.dao.ReceivingSyncQueueDao
+import com.odin.wms.android.data.local.dao.ShippingOrderDao
+import com.odin.wms.android.data.local.dao.ShippingPackageDao
 import com.odin.wms.android.data.local.dao.StockSummaryDao
 import dagger.Module
 import dagger.Provides
@@ -23,7 +28,7 @@ object DatabaseModule {
     @Singleton
     fun provideWmsDatabase(@ApplicationContext context: Context): WmsDatabase =
         Room.databaseBuilder(context, WmsDatabase::class.java, WmsDatabase.DATABASE_NAME)
-            .addMigrations(WmsDatabase.MIGRATION_1_2)
+            .addMigrations(WmsDatabase.MIGRATION_1_2, WmsDatabase.MIGRATION_2_3)
             .build()
 
     @Provides
@@ -40,4 +45,19 @@ object DatabaseModule {
 
     @Provides
     fun provideReceivingSyncQueueDao(db: WmsDatabase): ReceivingSyncQueueDao = db.receivingSyncQueueDao()
+
+    @Provides
+    fun providePickingTaskDao(db: WmsDatabase): PickingTaskDao = db.pickingTaskDao()
+
+    @Provides
+    fun providePickingItemDao(db: WmsDatabase): PickingItemDao = db.pickingItemDao()
+
+    @Provides
+    fun providePickingSyncQueueDao(db: WmsDatabase): PickingSyncQueueDao = db.pickingSyncQueueDao()
+
+    @Provides
+    fun provideShippingOrderDao(db: WmsDatabase): ShippingOrderDao = db.shippingOrderDao()
+
+    @Provides
+    fun provideShippingPackageDao(db: WmsDatabase): ShippingPackageDao = db.shippingPackageDao()
 }

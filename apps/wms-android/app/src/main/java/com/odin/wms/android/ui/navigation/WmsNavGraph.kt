@@ -16,6 +16,10 @@ import androidx.navigation.navArgument
 import com.odin.wms.android.ui.dashboard.DashboardScreen
 import com.odin.wms.android.ui.login.LoginScreen
 import com.odin.wms.android.ui.operations.OperationsScreen
+import com.odin.wms.android.ui.picking.PickingCompleteScreen
+import com.odin.wms.android.ui.picking.PickingConfirmScreen
+import com.odin.wms.android.ui.picking.PickingDetailScreen
+import com.odin.wms.android.ui.picking.PickingListScreen
 import com.odin.wms.android.ui.profile.ProfileScreen
 import com.odin.wms.android.ui.receiving.DivergenceScreen
 import com.odin.wms.android.ui.receiving.ReceivingConfirmScreen
@@ -23,6 +27,9 @@ import com.odin.wms.android.ui.receiving.ReceivingDetailScreen
 import com.odin.wms.android.ui.receiving.ReceivingListScreen
 import com.odin.wms.android.ui.receiving.SignatureScreen
 import com.odin.wms.android.ui.scanner.BarcodeScannerScreen
+import com.odin.wms.android.ui.shipping.ShippingConfirmScreen
+import com.odin.wms.android.ui.shipping.ShippingDetailScreen
+import com.odin.wms.android.ui.shipping.ShippingListScreen
 
 sealed class WmsScreen(val route: String) {
     data object Login           : WmsScreen("login")
@@ -56,6 +63,53 @@ sealed class WmsScreen(val route: String) {
     data object Signature : WmsScreen("signature/{orderId}") {
         fun route(orderId: String) = "signature/$orderId"
     }
+
+    // --- Picking Flow (Story 8.3) ---
+    data object PickingList   : WmsScreen("picking_list")
+    data object PickingDetail : WmsScreen("picking_detail/{taskId}") {
+        fun route(taskId: String) = "picking_detail/$taskId"
+    }
+    data object PickingConfirm : WmsScreen("picking_confirm/{taskId}/{itemId}") {
+        fun route(
+            taskId: String,
+            itemId: String,
+            scannedCode: String? = null,
+            expectedQty: Int? = null
+        ): String {
+            var r = "picking_confirm/$taskId/$itemId"
+            val params = buildList {
+                if (scannedCode != null) add("scannedCode=$scannedCode")
+                if (expectedQty != null) add("expectedQty=$expectedQty")
+            }
+            if (params.isNotEmpty()) r += "?" + params.joinToString("&")
+            return r
+        }
+    }
+    data object PickingComplete : WmsScreen("picking_complete/{taskId}") {
+        fun route(taskId: String) = "picking_complete/$taskId"
+    }
+
+    // --- Shipping Flow (Story 8.3) ---
+    data object ShippingList   : WmsScreen("shipping_list")
+    data object ShippingDetail : WmsScreen("shipping_detail/{shipmentId}") {
+        fun route(shipmentId: String) = "shipping_detail/$shipmentId"
+    }
+    data object ShippingConfirm : WmsScreen("shipping_confirm/{shipmentId}/{packageId}") {
+        fun route(
+            shipmentId: String,
+            packageId: String,
+            scannedCode: String? = null,
+            vehiclePlate: String? = null
+        ): String {
+            var r = "shipping_confirm/$shipmentId/$packageId"
+            val params = buildList {
+                if (scannedCode != null) add("scannedCode=$scannedCode")
+                if (vehiclePlate != null) add("vehiclePlate=$vehiclePlate")
+            }
+            if (params.isNotEmpty()) r += "?" + params.joinToString("&")
+            return r
+        }
+    }
 }
 
 @Composable
@@ -65,13 +119,18 @@ fun WmsNavGraph(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Hide bottom bar on Login and entire receiving flow
+    // Hide bottom bar on Login and detail flows
     val showBottomBar = currentRoute != null &&
         currentRoute != WmsScreen.Login.route &&
         !currentRoute.startsWith("receiving_detail") &&
         !currentRoute.startsWith("receiving_confirm") &&
         !currentRoute.startsWith("divergence/") &&
-        !currentRoute.startsWith("signature/")
+        !currentRoute.startsWith("signature/") &&
+        !currentRoute.startsWith("picking_detail") &&
+        !currentRoute.startsWith("picking_confirm") &&
+        !currentRoute.startsWith("picking_complete") &&
+        !currentRoute.startsWith("shipping_detail") &&
+        !currentRoute.startsWith("shipping_confirm")
 
     Scaffold(
         bottomBar = {
@@ -108,7 +167,9 @@ fun WmsNavGraph(
                         onOperationClick = { operation ->
                             when (operation) {
                                 "Recebimento" -> navController.navigate(WmsScreen.ReceivingList.route)
-                                else -> { /* Story 8.3: Picking, 8.4: Inventory/Transfer */ }
+                                "Picking"     -> navController.navigate(WmsScreen.PickingList.route)
+                                "Expedição"   -> navController.navigate(WmsScreen.ShippingList.route)
+                                else -> { /* Story 8.4: Inventory/Transfer */ }
                             }
                         }
                     )
@@ -236,6 +297,150 @@ fun WmsNavGraph(
                                 popUpTo(WmsScreen.ReceivingList.route) { inclusive = true }
                             }
                         }
+                    )
+                }
+
+                // ----- Picking Flow (Story 8.3) -----
+
+                composable(WmsScreen.PickingList.route) {
+                    PickingListScreen(
+                        onTaskClick = { taskId ->
+                            navController.navigate(WmsScreen.PickingDetail.route(taskId))
+                        },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = WmsScreen.PickingDetail.route,
+                    arguments = listOf(
+                        navArgument("taskId") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val taskId = backStackEntry.arguments?.getString("taskId") ?: return@composable
+                    val scannedCode = backStackEntry.savedStateHandle.get<String>("scannedCode")
+
+                    PickingDetailScreen(
+                        taskId = taskId,
+                        onScanClick = {
+                            navController.navigate(WmsScreen.Scanner.route)
+                        },
+                        onConfirmItem = { _, itemId ->
+                            val route = WmsScreen.PickingConfirm.route(
+                                taskId = taskId,
+                                itemId = itemId,
+                                scannedCode = scannedCode
+                            )
+                            navController.navigate(route)
+                        },
+                        onCompleteTask = { _ ->
+                            navController.navigate(WmsScreen.PickingComplete.route(taskId))
+                        },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = "${WmsScreen.PickingConfirm.route}?scannedCode={scannedCode}&expectedQty={expectedQty}",
+                    arguments = listOf(
+                        navArgument("taskId")      { type = NavType.StringType },
+                        navArgument("itemId")      { type = NavType.StringType },
+                        navArgument("scannedCode") { type = NavType.StringType; defaultValue = "" },
+                        navArgument("expectedQty") { type = NavType.IntType; defaultValue = 1 }
+                    )
+                ) { backStackEntry ->
+                    val taskId      = backStackEntry.arguments?.getString("taskId") ?: return@composable
+                    val itemId      = backStackEntry.arguments?.getString("itemId") ?: return@composable
+                    val scannedCode = backStackEntry.arguments?.getString("scannedCode")?.ifBlank { null }
+                    val expectedQty = backStackEntry.arguments?.getInt("expectedQty") ?: 1
+
+                    PickingConfirmScreen(
+                        taskId = taskId,
+                        itemId = itemId,
+                        scannedCode = scannedCode,
+                        expectedQty = expectedQty,
+                        onNavigateBack = { navController.popBackStack() },
+                        onConfirmSuccess = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = WmsScreen.PickingComplete.route,
+                    arguments = listOf(
+                        navArgument("taskId") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val taskId = backStackEntry.arguments?.getString("taskId") ?: return@composable
+
+                    PickingCompleteScreen(
+                        taskId = taskId,
+                        onBackToList = {
+                            navController.navigate(WmsScreen.PickingList.route) {
+                                popUpTo(WmsScreen.PickingList.route) { inclusive = true }
+                            }
+                        },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                // ----- Shipping Flow (Story 8.3) -----
+
+                composable(WmsScreen.ShippingList.route) {
+                    ShippingListScreen(
+                        onOrderClick = { orderId ->
+                            navController.navigate(WmsScreen.ShippingDetail.route(orderId))
+                        },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = WmsScreen.ShippingDetail.route,
+                    arguments = listOf(
+                        navArgument("shipmentId") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val shipmentId = backStackEntry.arguments?.getString("shipmentId") ?: return@composable
+                    val scannedCode = backStackEntry.savedStateHandle.get<String>("scannedCode")
+
+                    ShippingDetailScreen(
+                        orderId = shipmentId,
+                        onScanClick = {
+                            navController.navigate(WmsScreen.Scanner.route)
+                        },
+                        onConfirmPackage = { _, packageId ->
+                            val route = WmsScreen.ShippingConfirm.route(
+                                shipmentId = shipmentId,
+                                packageId = packageId,
+                                scannedCode = scannedCode
+                            )
+                            navController.navigate(route)
+                        },
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(
+                    route = "${WmsScreen.ShippingConfirm.route}?scannedCode={scannedCode}&vehiclePlate={vehiclePlate}",
+                    arguments = listOf(
+                        navArgument("shipmentId")   { type = NavType.StringType },
+                        navArgument("packageId")    { type = NavType.StringType },
+                        navArgument("scannedCode")  { type = NavType.StringType; defaultValue = "" },
+                        navArgument("vehiclePlate") { type = NavType.StringType; defaultValue = "" }
+                    )
+                ) { backStackEntry ->
+                    val shipmentId    = backStackEntry.arguments?.getString("shipmentId") ?: return@composable
+                    val packageId     = backStackEntry.arguments?.getString("packageId") ?: return@composable
+                    val scannedCode   = backStackEntry.arguments?.getString("scannedCode")?.ifBlank { null }
+                    val vehiclePlate  = backStackEntry.arguments?.getString("vehiclePlate")?.ifBlank { null }
+
+                    ShippingConfirmScreen(
+                        orderId = shipmentId,
+                        packageId = packageId,
+                        scannedCode = scannedCode,
+                        initialVehiclePlate = vehiclePlate,
+                        onNavigateBack = { navController.popBackStack() },
+                        onConfirmSuccess = { navController.popBackStack() }
                     )
                 }
             }
